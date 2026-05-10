@@ -1,6 +1,10 @@
 FROM node:20-bookworm-slim AS build
 WORKDIR /app
 
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends git \
+  && rm -rf /var/lib/apt/lists/*
+
 COPY package.json package-lock.json* tsconfig.json ./
 RUN npm install
 
@@ -8,7 +12,6 @@ COPY src ./src
 COPY test ./test
 COPY sql ./sql
 COPY backup ./backup
-COPY vendor ./vendor
 COPY README.md ./
 COPY .env.example ./
 

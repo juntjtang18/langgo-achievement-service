@@ -8,7 +8,7 @@ import { AchievementService } from './services/achievementService';
 import { ProgressService } from './services/progressService';
 import { EventHandlerService } from './services/eventHandler';
 import { EventSubscriberService } from './services/eventSubscriberService';
-import { createEventBusFromEnv } from '../vendor/event-bus-client/createEventBus';
+import { createEventBus } from 'event-bus-client';
 
 async function main() {
   const config = loadConfig();
@@ -21,7 +21,14 @@ async function main() {
   const achievementService = new AchievementService(repository);
   const progressService = new ProgressService(db, repository, logger);
   const eventHandler = new EventHandlerService(progressService);
-  const eventBus = createEventBusFromEnv({ logger });
+  const eventBus = createEventBus({
+    driver: 'postgres',
+    config: {
+      connectionString: process.env.EVENT_BUS_POSTGRES_URL ?? '',
+      channelPrefix: process.env.EVENT_BUS_CHANNEL_PREFIX ?? 'event_bus',
+    },
+    logger,
+  });
   const subscriberService = new EventSubscriberService(repository, eventBus, eventHandler, logger);
 
   await subscriberService.register();
