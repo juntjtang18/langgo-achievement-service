@@ -53,6 +53,14 @@ export class Database {
       }
     }
 
+    const schemaSeeded = await this.hasSeedData();
+    if (!schemaSeeded) {
+      const restored = await this.restoreFromBackupIfPresent();
+      if (!restored) {
+        this.logger.warn({ schema: this.schema }, 'achievement schema has required tables but no seed data');
+      }
+    }
+
     const valid = await this.hasRequiredTables();
     if (!valid) {
       throw new Error(`Database initialization failed for schema "${this.schema}".`);
@@ -98,6 +106,18 @@ export class Database {
     );
 
     return REQUIRED_TABLES.every((table) => result.rows.some((row) => row.table_name === table));
+  }
+
+  private async hasSeedData(): Promise<boolean> {
+    if (!(await this.hasRequiredTables())) {
+      return false;
+    }
+
+    const result = await this.query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count FROM ${getSchemaQualifiedTable(this.schema, 'as_achievements')}`
+    );
+
+    return Number(result.rows[0]?.count ?? '0') > 0;
   }
 
   private async restoreFromBackupIfPresent(): Promise<boolean> {

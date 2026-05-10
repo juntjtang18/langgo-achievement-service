@@ -152,6 +152,36 @@ const userAchievementOutputRows = userAchievementLinkRows.map((link) => {
   };
 });
 
+function compareTimestamp(left, right) {
+  const leftValue = left ? Date.parse(left) : 0;
+  const rightValue = right ? Date.parse(right) : 0;
+  return leftValue - rightValue;
+}
+
+const dedupedUserAchievementRows = Array.from(
+  userAchievementOutputRows.reduce((map, row) => {
+    const key = `${row.userid}:${row.achievement_id}`;
+    const existing = map.get(key);
+
+    if (!existing) {
+      map.set(key, row);
+      return map;
+    }
+
+    const updatedComparison = compareTimestamp(existing.updated_at, row.updated_at);
+    if (updatedComparison < 0) {
+      map.set(key, row);
+      return map;
+    }
+
+    if (updatedComparison === 0 && row.id > existing.id) {
+      map.set(key, row);
+    }
+
+    return map;
+  }, new Map()).values()
+).sort((left, right) => left.id - right.id);
+
 const output = `-- Generated from ../langgo_strapi4/database/backup/langgo_full.sql
 -- Source date: 2026-05-10
 -- Target schema placeholder: {{SCHEMA}}
@@ -216,7 +246,7 @@ SET event_name = EXCLUDED.event_name,
 INSERT INTO {{SCHEMA}}.as_user_achievements
   (id, userid, username, achievement_id, progress, achieved, achieved_at, created_at, updated_at)
 VALUES
-${emitValues(userAchievementOutputRows, (row) => [
+${emitValues(dedupedUserAchievementRows, (row) => [
   sqlNumber(row.id),
   sqlString(row.userid),
   sqlString(row.username),
@@ -227,9 +257,8 @@ ${emitValues(userAchievementOutputRows, (row) => [
   sqlString(row.created_at),
   sqlString(row.updated_at),
 ])}
-ON CONFLICT (id) DO UPDATE
-SET userid = EXCLUDED.userid,
-    username = EXCLUDED.username,
+ON CONFLICT (userid, achievement_id) DO UPDATE
+SET username = EXCLUDED.username,
     achievement_id = EXCLUDED.achievement_id,
     progress = EXCLUDED.progress,
     achieved = EXCLUDED.achieved,
@@ -239,7 +268,7 @@ SET userid = EXCLUDED.userid,
 ${setvalSql('as_achievements', achievementRows)}
 ${setvalSql('as_achievement_translations', translationOutputRows)}
 ${setvalSql('as_event_lists', eventListRows)}
-${setvalSql('as_user_achievements', userAchievementOutputRows)}
+${setvalSql('as_user_achievements', dedupedUserAchievementRows)}
 
 COMMIT;
 `;
@@ -250,4 +279,4 @@ console.log(`Generated ${outputPath}`);
 console.log(`Achievements: ${achievementRows.length}`);
 console.log(`Translations: ${translationOutputRows.length}`);
 console.log(`Event list rows: ${eventListRows.length}`);
-console.log(`User achievements: ${userAchievementOutputRows.length}`);
+console.log(`User achievements: ${dedupedUserAchievementRows.length}`);

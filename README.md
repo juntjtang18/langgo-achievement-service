@@ -88,8 +88,8 @@ Startup sequence:
 1. Connect to Postgres.
 2. Create `ACHIEVEMENT_DB_SCHEMA` if missing.
 3. Check for required tables.
-4. If missing tables exist and `backup/*.sql` files are present, run those files.
-5. Otherwise run `sql/init.sql`.
+4. If required tables are missing, restore from `backup/*.sql` when present or create tables from `sql/init.sql`.
+5. If tables already exist but `as_achievements` is empty, retry restore from `backup/*.sql`.
 6. Start HTTP and event subscriptions only after initialization succeeds.
 
 The SQL files use a `{{SCHEMA}}` placeholder so the same scripts can initialize any configured schema.
@@ -115,24 +115,22 @@ Incoming events map to the old Strapi behavior:
 
 ## Cloud Run
 
-Build image:
+Use the provided deploy script:
 
 ```bash
-docker build -t gcr.io/PROJECT_ID/langgo-achievement-server .
+./deploy.sh
 ```
 
-Deploy:
+`deploy.sh` does the following:
 
-```bash
-gcloud run deploy langgo-achievement-server \
-  --image gcr.io/PROJECT_ID/langgo-achievement-server \
-  --region us-west1 \
-  --platform managed \
-  --allow-unauthenticated=false \
-  --set-env-vars PORT=8080
-```
+- regenerates `backup/strapi4-achievement-data.restore.sql`
+- applies `sql/init.sql` and `backup/*.sql` to the configured Cloud SQL schema
+- builds and pushes the Docker image
+- deploys the Cloud Run service
+- verifies `/healthz`
+- verifies `/achievements-not-achieved` returns `{ "data": [...] }` with the expected achievement fields
 
-Add the remaining database, event bus, and internal key environment variables through `--set-env-vars`, Secret Manager, or your deployment config.
+The script relies on the GitHub `event-bus-client` dependency through the Docker build. The build stage installs `git`, so GitHub-based npm dependencies resolve correctly in Cloud Run image builds.
 
 ## Tests
 
