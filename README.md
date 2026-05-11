@@ -86,7 +86,7 @@ npm run start
 http://localhost:8080/admin/login
 ```
 
-The admin login form authenticates against `STRAPI_ADMIN_URL`, then gives access to CRUD screens for:
+The admin login form authenticates against `STRAPI_ADMIN_URL`, verifies the Strapi user is active and has an admin role, then gives access to CRUD screens for:
 
 - `as_achievements`
 - `as_achievement_translations`

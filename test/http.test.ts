@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createLogger } from '../src/logger';
 import { createApp } from '../src/app';
 
@@ -33,7 +33,7 @@ function createTestApp() {
     adminAuthService: {
       getLoginUrl: () => 'https://example.com/admin/auth/login',
       getSession: (sessionId?: string | null) => sessionId === 'valid-session'
-        ? { id: 'valid-session', email: 'admin@example.com', strapiToken: 'token' }
+        ? { id: 'valid-session', email: 'admin@example.com', strapiToken: 'token', roles: ['strapi-super-admin'] }
         : null,
       deleteSession: () => undefined,
       login: async () => {
@@ -101,6 +101,51 @@ describe('http routes', () => {
     expect(response.status).toBe(200);
     expect(response.text).toContain('Achievement Admin');
     expect(response.text).toContain('Strapi-backed auth');
+    expect(response.text).toContain('Only Strapi users with an admin role can access this UI.');
+  });
+
+  it('shows the non-admin hint when Strapi login is rejected by role enforcement', async () => {
+    const app = createApp({
+      achievementService: {
+        ensureUserAchievements: async () => undefined,
+        listAchievedByUserid: async () => [],
+        listNotAchievedByUserid: async () => [],
+      } as any,
+      adminRepository: {
+        listAchievements: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
+        listTranslations: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
+        listEventLists: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
+        listUserAchievements: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
+      } as any,
+      adminAuthService: {
+        getLoginUrl: () => 'https://example.com/admin/auth/login',
+        getSession: () => null,
+        deleteSession: () => undefined,
+        login: vi.fn(async () => {
+          throw new Error('Only users with a Strapi admin role can sign in here.');
+        }),
+      } as any,
+      eventBus: {
+        publish: async () => ({ driver: 'postgres', topic: 'x', publishedAt: new Date().toISOString() }),
+        subscribe: async () => ({ topic: 'x', unsubscribe: async () => undefined }),
+        close: async () => undefined,
+      } as any,
+      subscriberService: {
+        refresh: async () => undefined,
+        close: async () => undefined,
+      } as any,
+      logger: createLogger('silent'),
+      internalKey: 'secret',
+    });
+
+    const response = await request(app)
+      .post('/admin/login')
+      .type('form')
+      .send({ email: 'user@example.com', password: 'secret' });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toContain('/admin/login');
+    expect(response.headers.location).toContain('Only+users+with+a+Strapi+admin+role+can+sign+in+here.');
   });
 
   it('renders only the selected admin section content', async () => {

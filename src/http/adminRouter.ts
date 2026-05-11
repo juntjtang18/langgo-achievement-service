@@ -238,6 +238,7 @@ function renderLoginPage(strapiLoginUrl: string, notice?: string | null, error?:
               <span class="badge text-bg-primary-subtle text-primary-emphasis mb-3">Strapi-backed auth</span>
               <h1 class="h3 mb-2">Achievement Admin</h1>
               <p class="text-secondary">Authenticate with the Strapi admin account at <a href="${escapeHtml(strapiLoginUrl)}" target="_blank" rel="noreferrer">${escapeHtml(strapiLoginUrl)}</a>.</p>
+              <p class="text-secondary small mb-3">Only Strapi users with an admin role can access this UI.</p>
               <!--NOTICE-->
               <form method="post" action="/admin/login" class="vstack gap-3">
                 <div>
