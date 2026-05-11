@@ -182,28 +182,12 @@ function iconButton(options: { label: string; icon: string; tone?: 'primary' | '
 }
 
 function normalizeManualEventPayload(topic: string, payload: Record<string, unknown>): Record<string, unknown> {
-  const canonicalUserId =
-    payload.userId ??
-    payload.user_id ??
-    payload.userid ??
-    (typeof payload.review === 'object' && payload.review !== null ? (payload.review as Record<string, unknown>).userId ?? (payload.review as Record<string, unknown>).userid : undefined) ??
-    (typeof payload.flashcard === 'object' && payload.flashcard !== null ? (payload.flashcard as Record<string, unknown>).userId ?? (payload.flashcard as Record<string, unknown>).userid : undefined) ??
-    (typeof payload.article === 'object' && payload.article !== null ? (payload.article as Record<string, unknown>).userId ?? (payload.article as Record<string, unknown>).userid : undefined);
-
-  const canonicalUsername =
-    payload.username ??
-    payload.userName ??
-    (typeof payload.review === 'object' && payload.review !== null ? (payload.review as Record<string, unknown>).username ?? (payload.review as Record<string, unknown>).userName : undefined) ??
-    (typeof payload.flashcard === 'object' && payload.flashcard !== null ? (payload.flashcard as Record<string, unknown>).username ?? (payload.flashcard as Record<string, unknown>).userName : undefined) ??
-    (typeof payload.article === 'object' && payload.article !== null ? (payload.article as Record<string, unknown>).username ?? (payload.article as Record<string, unknown>).userName : undefined);
-
   return {
     ...payload,
-    eventId: payload.eventId ?? payload.event_id ?? crypto.randomUUID(),
-    event_name: payload.event_name ?? payload.eventName ?? topic,
-    eventName: payload.eventName ?? payload.event_name ?? topic,
-    userId: payload.userId ?? payload.user_id ?? payload.userid ?? canonicalUserId ?? null,
-    username: payload.username ?? payload.userName ?? canonicalUsername ?? null,
+    event_id: payload.event_id ?? crypto.randomUUID(),
+    event_name: payload.event_name ?? topic,
+    userid: payload.userid ?? null,
+    username: payload.username ?? null,
   };
 }
 
@@ -378,7 +362,7 @@ function renderEventsPage(options: AdminLayoutOptions): string {
       </div>
       <div class="col-12 col-lg-8">
         <label class="form-label">payload_json</label>
-        <textarea class="form-control form-control-sm font-monospace" name="payload_json" rows="6" placeholder='{"userId":8,"username":"vivian","event_name":"flashcard.review","eventId":"manual-evt-1"}' required></textarea>
+        <textarea class="form-control form-control-sm font-monospace" name="payload_json" rows="6" placeholder='{"userid":"8","username":"vivian","event_name":"flashcard.review"}' required></textarea>
       </div>
       <div class="col-12 d-flex justify-content-end gap-2">
         ${iconButton({ label: 'Refresh subscriptions', icon: 'arrow-clockwise', tone: 'secondary', formaction: '/admin/subscriptions/refresh' })}

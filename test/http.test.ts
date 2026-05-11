@@ -284,11 +284,10 @@ describe('http routes', () => {
     expect(response.status).toBe(302);
     expect(publishes).toHaveLength(1);
     expect(publishes[0].topic).toBe('flashcard.review');
+    expect(typeof publishes[0].payload.event_id).toBe('string');
+    expect(publishes[0].payload.event_id.length).toBeGreaterThan(0);
     expect(publishes[0].payload.event_name).toBe('flashcard.review');
-    expect(publishes[0].payload.eventName).toBe('flashcard.review');
-    expect(publishes[0].payload.userId).toBe('8');
+    expect(publishes[0].payload.userid).toBe('8');
     expect(publishes[0].payload.username).toBe('vivian');
-    expect(typeof publishes[0].payload.eventId).toBe('string');
-    expect(publishes[0].payload.eventId.length).toBeGreaterThan(0);
   });
 });

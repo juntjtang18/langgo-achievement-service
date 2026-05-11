@@ -61,3 +61,41 @@ Validate ACHIEVEMENT_DB_SCHEMA before using it in SQL.
 Never drop anything outside ACHIEVEMENT_DB_SCHEMA.
 deploy.sh must never touch DB.
 setupdb.sh must only use committed plain SQL from backup sql
+
+
+
+
+===========================================================================
+
+Add audit persistence for received events and achievement point changes.
+
+Goal:
+The Achievement System should persist incoming event-bus events and the achievement progress changes calculated from them, for audit/debugging/replay.
+
+Add two tables:
+as_event_logs - Store every event received from event-bus-client.
+id
+event_name
+userid
+username
+payload_json
+received_at
+
+Processing behavior:
+When an event is received, insert into as_event_logs first
+then calculate the points to add based rules and update the corresponding achievements. 
+
+Admin UI: Add sidebar pages:
+Event Logs page should show latest received events
+Payload JSON can be shown in a collapsible/details area.
+
+Backup/setup:
+
+Include these audit tables in backupdb.sh.
+Include them in backup/install.sql.
+setupdb.sh should restore them with the rest of the schema.
+
+Important:
+Do not let audit logging crash the server silently.
+Keep audit writes in the same transaction as progress updates when possible.
+

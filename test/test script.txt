@@ -3,3 +3,29 @@
 curl --location 'https://achievement-service-852311377699.us-west1.run.app/achievements-achieved?locale=en' \
   --header 'x-internal-key: achievement-internal-key-20260510' \
   --header 'x-user-id: 60'
+
+
+
+npm run strapi admin:reset-user-password -- --email=support@geniusParentingAI.ca --password=Passw0rd@Strapi
+
+node:events:485
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: Connection terminated unexpectedly
+    at Connection.<anonymous> (/Users/James/develop/langgo/event-bus-client/node_modules/pg/lib/client.js:180:73)
+    at Object.onceWrapper (node:events:621:28)
+    at Connection.emit (node:events:507:28)
+    at Connection.emit (node:domain:489:12)
+    at Socket.<anonymous> (/Users/James/develop/langgo/event-bus-client/node_modules/pg/lib/connection.js:61:12)
+    at Socket.emit (node:events:507:28)
+    at Socket.emit (node:domain:489:12)
+    at Pipe.<anonymous> (node:net:346:12)
+Emitted 'error' event on Client instance at:
+    at Client._handleErrorEvent (/Users/James/develop/langgo/event-bus-client/node_modules/pg/lib/client.js:393:10)
+    at Connection.<anonymous> (/Users/James/develop/langgo/event-bus-client/node_modules/pg/lib/client.js:198:16)
+    at Object.onceWrapper (node:events:621:28)
+    [... lines matching original stack trace ...]
+    at Pipe.<anonymous> (node:net:346:12)
+
+Node.js v24.2.0

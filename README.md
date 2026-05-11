@@ -98,7 +98,7 @@ The admin login form authenticates against `STRAPI_ADMIN_URL`, verifies the Stra
 - `as_achievement_change_logs`
 
 The admin page also includes a manual event publisher that sends JSON payloads through the configured event bus so you can test the live achievement logic.
-Manual emit now normalizes legacy payloads like `{"userid":"8","username":"vivian"}` into the shared event-bus shape by filling top-level `eventId`, `event_name`, and `userId`. It also includes `eventName` as a compatibility alias for older subscribers.
+Manual emit uses one event schema only: `userid`, `username`, and `event_name`.
 
 Admin table pages use Bootstrap styling and are route-based:
 
@@ -181,11 +181,10 @@ Subscribed event names come from `as_event_lists.event_name`.
 
 Incoming events map to the old Strapi behavior:
 
-- canonical event-bus payload aligned with the Swift client field naming:
-  `topic = event name`, payload uses top-level `eventId`, `event_name`, `userId`, and `username`
-- compatibility aliases still accepted: `eventName`, `user_id`, `userid`, `userName`, and nested `review` / `flashcard` / `article` user fields
-- user id from top-level `payload.user_id`, `payload.userid`, `payload.userId`, then nested `review`, `flashcard`, or `article`
-- username from `payload.username`, `payload.userName`, nested `review`, `flashcard`, or `article`
+- unified event-bus payload:
+  `topic = event name`, payload uses top-level `event_name`, `userid`, and `username`
+- the service reads only `payload.event_name`, `payload.userid`, and `payload.username`
+- `topic` is used only as a fallback when `event_name` is omitted
 - progress increment uses `as_achievements.points`
 - achievement completes when `progress >= goal`
 

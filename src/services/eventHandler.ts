@@ -2,32 +2,11 @@ import type { EventBusMessage } from '../types';
 import { ProgressService } from './progressService';
 
 function pickUserId(payload: Record<string, any> = {}): string | number | null {
-  return (
-    payload.user_id ??
-    payload.userid ??
-    payload.userId ??
-    payload.review?.userid ??
-    payload.review?.userId ??
-    payload.flashcard?.userid ??
-    payload.flashcard?.userId ??
-    payload.article?.userid ??
-    payload.article?.userId ??
-    null
-  );
+  return payload.userid ?? null;
 }
 
 function pickUsername(payload: Record<string, any> = {}): string | null {
-  return (
-    payload.username ??
-    payload.userName ??
-    payload.review?.username ??
-    payload.review?.userName ??
-    payload.flashcard?.username ??
-    payload.flashcard?.userName ??
-    payload.article?.username ??
-    payload.article?.userName ??
-    null
-  );
+  return payload.username ?? null;
 }
 
 export class EventHandlerService {
@@ -38,7 +17,6 @@ export class EventHandlerService {
     const eventName =
       message.topic ||
       payload.event_name ||
-      payload.eventName ||
       '';
 
     return this.progressService.applyEvent({

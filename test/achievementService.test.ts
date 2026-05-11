@@ -63,7 +63,7 @@ describe('achievement service', () => {
     ]);
   });
 
-  it('extracts nested user data and delegates to progress service', async () => {
+  it('extracts unified event fields and delegates to progress service', async () => {
     const calls: any[] = [];
     const eventHandler = new EventHandlerService({
       applyEvent: async (event) => {
@@ -75,10 +75,9 @@ describe('achievement service', () => {
     const result = await eventHandler.handle({
       topic: 'flashcard.review',
       payload: {
-        review: {
-          userId: 8,
-          userName: 'vivian',
-        },
+        userid: 8,
+        username: 'vivian',
+        event_name: 'flashcard.review',
       },
       ack: async () => undefined,
       nack: async () => undefined,
@@ -91,16 +90,15 @@ describe('achievement service', () => {
         userid: '8',
         username: 'vivian',
         payload: {
-          review: {
-            userId: 8,
-            userName: 'vivian',
-          },
+          userid: 8,
+          username: 'vivian',
+          event_name: 'flashcard.review',
         },
       },
     ]);
   });
 
-  it('reports and maps all supported event payload shapes', async () => {
+  it('accepts only the unified event schema', async () => {
     const cases = [
       {
         testCase: 'top-level userid/username on flashcard.create',
@@ -108,6 +106,7 @@ describe('achievement service', () => {
         payload: {
           userid: 101,
           username: 'alpha',
+          event_name: 'flashcard.create',
         },
         expected: {
           event_name: 'flashcard.create',
@@ -116,119 +115,16 @@ describe('achievement service', () => {
         },
       },
       {
-        testCase: 'top-level userId/userName on flashcard.review',
+        testCase: 'topic falls back when event_name is omitted',
         topic: 'flashcard.review',
         payload: {
-          userId: 102,
-          userName: 'bravo',
+          userid: 102,
+          username: 'bravo',
         },
         expected: {
           event_name: 'flashcard.review',
           userid: '102',
           username: 'bravo',
-        },
-      },
-      {
-        testCase: 'top-level user_id/username on canonical sibling event payload',
-        topic: 'flashcard.review',
-        payload: {
-          user_id: 1021,
-          username: 'bravo-underscore',
-        },
-        expected: {
-          event_name: 'flashcard.review',
-          userid: '1021',
-          username: 'bravo-underscore',
-        },
-      },
-      {
-        testCase: 'nested review.userid/review.username on flashcard.review',
-        topic: 'flashcard.review',
-        payload: {
-          review: {
-            userid: 103,
-            username: 'charlie',
-          },
-        },
-        expected: {
-          event_name: 'flashcard.review',
-          userid: '103',
-          username: 'charlie',
-        },
-      },
-      {
-        testCase: 'nested review.userId/review.userName on flashcard.remembered',
-        topic: 'flashcard.remembered',
-        payload: {
-          review: {
-            userId: 104,
-            userName: 'delta',
-          },
-        },
-        expected: {
-          event_name: 'flashcard.remembered',
-          userid: '104',
-          username: 'delta',
-        },
-      },
-      {
-        testCase: 'nested flashcard.userid/flashcard.username on flashcard.create',
-        topic: 'flashcard.create',
-        payload: {
-          flashcard: {
-            userid: 105,
-            username: 'echo',
-          },
-        },
-        expected: {
-          event_name: 'flashcard.create',
-          userid: '105',
-          username: 'echo',
-        },
-      },
-      {
-        testCase: 'nested flashcard.userId/flashcard.userName on flashcard.create',
-        topic: 'flashcard.create',
-        payload: {
-          flashcard: {
-            userId: 106,
-            userName: 'foxtrot',
-          },
-        },
-        expected: {
-          event_name: 'flashcard.create',
-          userid: '106',
-          username: 'foxtrot',
-        },
-      },
-      {
-        testCase: 'nested article.userid/article.username on article.create',
-        topic: 'article.create',
-        payload: {
-          article: {
-            userid: 107,
-            username: 'golf',
-          },
-        },
-        expected: {
-          event_name: 'article.create',
-          userid: '107',
-          username: 'golf',
-        },
-      },
-      {
-        testCase: 'nested article.userId/article.userName on article.create',
-        topic: 'article.create',
-        payload: {
-          article: {
-            userId: 108,
-            userName: 'hotel',
-          },
-        },
-        expected: {
-          event_name: 'article.create',
-          userid: '108',
-          username: 'hotel',
         },
       },
     ];
@@ -262,7 +158,7 @@ describe('achievement service', () => {
     }
   });
 
-  it('prefers the canonical sibling event format while remaining backward compatible', async () => {
+  it('ignores legacy alias fields that are outside the unified schema', async () => {
     const calls: any[] = [];
     const eventHandler = new EventHandlerService({
       applyEvent: async (event) => {
@@ -274,14 +170,11 @@ describe('achievement service', () => {
     await eventHandler.handle({
       topic: '',
       payload: {
-        eventName: 'flashcard.review',
-        eventId: 'evt-100',
-        user_id: 501,
+        event_name: 'flashcard.review',
+        userid: 501,
         username: 'canonical-user',
-        _meta: {
-          source: 'event-bus',
-          topic: 'flashcard.review',
-        },
+        userId: 999,
+        userName: 'ignored-user-name',
       },
       ack: async () => undefined,
       nack: async () => undefined,
@@ -290,10 +183,8 @@ describe('achievement service', () => {
     await eventHandler.handle({
       topic: 'flashcard.create',
       payload: {
-        flashcard: {
-          userId: 502,
-          userName: 'legacy-user',
-        },
+        userId: 502,
+        userName: 'legacy-user',
       },
       ack: async () => undefined,
       nack: async () => undefined,
@@ -307,8 +198,8 @@ describe('achievement service', () => {
       },
       {
         event_name: 'flashcard.create',
-        userid: '502',
-        username: 'legacy-user',
+        userid: null,
+        username: null,
       },
     ];
 
@@ -319,7 +210,7 @@ describe('achievement service', () => {
     }));
 
     reportCase(
-      'achievement handler aligns with sibling canonical top-level payload format and legacy nested payloads',
+      'achievement handler only reads userid, username, and event_name',
       expected,
       actual
     );
@@ -427,7 +318,7 @@ describe('achievement service', () => {
         testCase: 'flashcard.create increments by 1 and stays unachieved below goal',
         message: {
           topic: 'flashcard.create',
-          payload: { flashcard: { userId: 200, userName: 'iris' } },
+          payload: { userid: 200, username: 'iris', event_name: 'flashcard.create' },
         },
         expected: { progress: 1, achieved: false },
       },
@@ -435,7 +326,7 @@ describe('achievement service', () => {
         testCase: 'flashcard.review increments by 2 and stays unachieved below goal',
         message: {
           topic: 'flashcard.review',
-          payload: { review: { userId: 200, userName: 'iris' } },
+          payload: { userid: 200, username: 'iris', event_name: 'flashcard.review' },
         },
         expected: { progress: 2, achieved: false },
       },
@@ -443,7 +334,7 @@ describe('achievement service', () => {
         testCase: 'flashcard.remembered increments by 3 and reaches goal',
         message: {
           topic: 'flashcard.remembered',
-          payload: { review: { userId: 200, userName: 'iris' } },
+          payload: { userid: 200, username: 'iris', event_name: 'flashcard.remembered' },
         },
         expected: { progress: 3, achieved: true },
       },
@@ -451,7 +342,7 @@ describe('achievement service', () => {
         testCase: 'article.create increments by 1 and reaches goal',
         message: {
           topic: 'article.create',
-          payload: { article: { userId: 200, userName: 'iris' } },
+          payload: { userid: 200, username: 'iris', event_name: 'article.create' },
         },
         expected: { progress: 1, achieved: true },
       },
@@ -459,7 +350,7 @@ describe('achievement service', () => {
         testCase: 'second flashcard.create reaches its goal on the second event',
         message: {
           topic: 'flashcard.create',
-          payload: { flashcard: { userId: 200, userName: 'iris' } },
+          payload: { userid: 200, username: 'iris', event_name: 'flashcard.create' },
         },
         expected: { progress: 2, achieved: true },
       },
@@ -467,7 +358,7 @@ describe('achievement service', () => {
         testCase: 'second flashcard.review accumulates to 4 and stays below goal',
         message: {
           topic: 'flashcard.review',
-          payload: { review: { userId: 200, userName: 'iris' } },
+          payload: { userid: 200, username: 'iris', event_name: 'flashcard.review' },
         },
         expected: { progress: 4, achieved: false },
       },
@@ -475,7 +366,7 @@ describe('achievement service', () => {
         testCase: 'third flashcard.review accumulates to 6 and reaches goal',
         message: {
           topic: 'flashcard.review',
-          payload: { review: { userId: 200, userName: 'iris' } },
+          payload: { userid: 200, username: 'iris', event_name: 'flashcard.review' },
         },
         expected: { progress: 6, achieved: true },
       },
