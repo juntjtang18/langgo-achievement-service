@@ -3,6 +3,7 @@ import path from 'node:path';
 
 const sourcePath = path.resolve(process.cwd(), '../langgo_strapi4/database/backup/langgo_full.sql');
 const outputPath = path.resolve(process.cwd(), 'backup/strapi4-achievement-data.restore.sql');
+const SUPPORTED_LOCALES = ['zh', 'zh-Hans', 'ja', 'ko', 'fr', 'es', 'vi'];
 
 function splitCopyLine(line) {
   return line.split('\t').map((value) => (value === '\\N' ? null : value));
@@ -115,7 +116,7 @@ const userAchievementLinkRows = parseCopyBlock(sql, 'as_user_achievements_achiev
 }));
 
 const translationById = new Map(translationRows.map((row) => [row.id, row]));
-const translationOutputRows = translationLinkRows.map((link) => {
+const englishTranslationRows = translationLinkRows.map((link) => {
   const translation = translationById.get(link.translation_id);
   if (!translation) {
     throw new Error(`Missing translation row for id ${link.translation_id}`);
@@ -131,6 +132,168 @@ const translationOutputRows = translationLinkRows.map((link) => {
     updated_at: translation.updated_at,
   };
 });
+
+function translateAchievement(locale, achievement) {
+  const goal = achievement.goal;
+
+  if (achievement.event_name === 'flashcard.create') {
+    switch (locale) {
+      case 'zh':
+        return {
+          title: `建立 ${goal} 張單字卡`,
+          description: `在 LangGo 中建立 ${goal} 張單字卡。`,
+        };
+      case 'zh-Hans':
+        return {
+          title: `创建 ${goal} 张单词卡`,
+          description: `在 LangGo 中创建 ${goal} 张单词卡。`,
+        };
+      case 'ja':
+        return {
+          title: `${goal}枚の単語カードを作成`,
+          description: `LangGoで${goal}枚の単語カードを作成する。`,
+        };
+      case 'ko':
+        return {
+          title: `플래시카드 ${goal}개 만들기`,
+          description: `LangGo에서 플래시카드 ${goal}개를 만드세요.`,
+        };
+      case 'fr':
+        return {
+          title: `Créer ${goal} fiches`,
+          description: `Créez ${goal} fiches dans LangGo.`,
+        };
+      case 'es':
+        return {
+          title: `Crear ${goal} tarjetas`,
+          description: `Crea ${goal} tarjetas en LangGo.`,
+        };
+      case 'vi':
+        return {
+          title: `Tạo ${goal} thẻ ghi nhớ`,
+          description: `Tạo ${goal} thẻ ghi nhớ trong LangGo.`,
+        };
+      default:
+        throw new Error(`Unsupported locale ${locale}`);
+    }
+  }
+
+  if (achievement.event_name === 'flashcard.review') {
+    switch (locale) {
+      case 'zh':
+        return {
+          title: `完成 ${goal} 次複習`,
+          description: `在 LangGo 中完成 ${goal} 次單字卡複習。`,
+        };
+      case 'zh-Hans':
+        return {
+          title: `完成 ${goal} 次复习`,
+          description: `在 LangGo 中完成 ${goal} 次单词卡复习。`,
+        };
+      case 'ja':
+        return {
+          title: `${goal}回の復習を完了`,
+          description: `LangGoで単語カードの復習を${goal}回完了する。`,
+        };
+      case 'ko':
+        return {
+          title: `복습 ${goal}회 완료`,
+          description: `LangGo에서 플래시카드 복습 ${goal}회를 완료하세요.`,
+        };
+      case 'fr':
+        return {
+          title: `Terminer ${goal} révisions`,
+          description: `Terminez ${goal} révisions de fiches dans LangGo.`,
+        };
+      case 'es':
+        return {
+          title: `Completar ${goal} repasos`,
+          description: `Completa ${goal} repasos de tarjetas en LangGo.`,
+        };
+      case 'vi':
+        return {
+          title: `Hoàn thành ${goal} lượt ôn tập`,
+          description: `Hoàn thành ${goal} lượt ôn tập thẻ ghi nhớ trong LangGo.`,
+        };
+      default:
+        throw new Error(`Unsupported locale ${locale}`);
+    }
+  }
+
+  if (achievement.event_name === 'flashcard.remembered') {
+    switch (locale) {
+      case 'zh':
+        return {
+          title: `記住 ${goal} 張單字卡`,
+          description: `在 LangGo 中記住 ${goal} 張單字卡。`,
+        };
+      case 'zh-Hans':
+        return {
+          title: `记住 ${goal} 张单词卡`,
+          description: `在 LangGo 中记住 ${goal} 张单词卡。`,
+        };
+      case 'ja':
+        return {
+          title: `${goal}枚の単語カードを記憶`,
+          description: `LangGoで${goal}枚の単語カードを記憶する。`,
+        };
+      case 'ko':
+        return {
+          title: `플래시카드 ${goal}개 기억하기`,
+          description: `LangGo에서 플래시카드 ${goal}개를 기억하세요.`,
+        };
+      case 'fr':
+        return {
+          title: `Mémoriser ${goal} fiches`,
+          description: `Mémorisez ${goal} fiches dans LangGo.`,
+        };
+      case 'es':
+        return {
+          title: `Recordar ${goal} tarjetas`,
+          description: `Recuerda ${goal} tarjetas en LangGo.`,
+        };
+      case 'vi':
+        return {
+          title: `Ghi nhớ ${goal} thẻ ghi nhớ`,
+          description: `Ghi nhớ ${goal} thẻ ghi nhớ trong LangGo.`,
+        };
+      default:
+        throw new Error(`Unsupported locale ${locale}`);
+    }
+  }
+
+  throw new Error(`Unsupported event_name ${achievement.event_name}`);
+}
+
+const achievementById = new Map(achievementRows.map((row) => [row.id, row]));
+const maxEnglishTranslationId = englishTranslationRows.reduce((max, row) => Math.max(max, row.id), 0);
+const generatedTranslationRows = englishTranslationRows.flatMap((row, index) => {
+  const achievement = achievementById.get(row.achievement_id);
+  if (!achievement) {
+    throw new Error(`Missing achievement row for id ${row.achievement_id}`);
+  }
+
+  return SUPPORTED_LOCALES.map((locale, localeIndex) => {
+    const translation = translateAchievement(locale, achievement);
+    return {
+      id: maxEnglishTranslationId + index * SUPPORTED_LOCALES.length + localeIndex + 1,
+      achievement_id: row.achievement_id,
+      locale,
+      title: translation.title,
+      description: translation.description,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    };
+  });
+});
+
+const translationOutputRows = [...englishTranslationRows, ...generatedTranslationRows]
+  .sort((left, right) => {
+    if (left.achievement_id !== right.achievement_id) {
+      return left.achievement_id - right.achievement_id;
+    }
+    return left.locale.localeCompare(right.locale);
+  });
 
 const userAchievementById = new Map(userAchievementRows.map((row) => [row.id, row]));
 const userAchievementOutputRows = userAchievementLinkRows.map((link) => {
@@ -221,7 +384,7 @@ ${emitValues(translationOutputRows, (row) => [
   sqlString(row.created_at),
   sqlString(row.updated_at),
 ])}
-ON CONFLICT (id) DO UPDATE
+ON CONFLICT (achievement_id, locale) DO UPDATE
 SET achievement_id = EXCLUDED.achievement_id,
     locale = EXCLUDED.locale,
     title = EXCLUDED.title,
