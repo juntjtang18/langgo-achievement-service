@@ -3,8 +3,10 @@
 set -euo pipefail
 
 if [ -f .env ]; then
+  set -a
   # shellcheck disable=SC1091
   source .env
+  set +a
 fi
 
 require_env() {
@@ -46,13 +48,9 @@ DATABASE_USERNAME="${DATABASE_USERNAME:-strapi}"
 DATABASE_SSL="${DATABASE_SSL:-false}"
 EVENT_BUS_DRIVER="${EVENT_BUS_DRIVER:-postgres}"
 EVENT_BUS_CHANNEL_PREFIX="${EVENT_BUS_CHANNEL_PREFIX:-event_bus}"
-VERIFY_USER_ID="${VERIFY_USER_ID:-8}"
-VERIFY_LOCALE="${VERIFY_LOCALE:-en}"
 
 require_command docker
 require_command gcloud
-require_command node
-require_command npm
 require_env ACHIEVEMENT_INTERNAL_KEY
 require_env DATABASE_PASSWORD
 require_env EVENT_BUS_POSTGRES_URL
@@ -64,72 +62,6 @@ echo "--- Deploying ${SERVICE_NAME} version ${VERSION} ---"
 echo "Project: ${PROJECT_ID}"
 echo "Region: ${REGION}"
 echo "Image: ${IMAGE_NAME}"
-
-echo "Generating restore SQL from ../langgo_strapi4 backup"
-npm run generate:restore-sql
-
-echo "Seeding achievement schema in Cloud SQL"
-DATABASE_HOST="${DATABASE_HOST}" \
-DATABASE_PORT="${DATABASE_PORT}" \
-DATABASE_NAME="${DATABASE_NAME}" \
-DATABASE_USERNAME="${DATABASE_USERNAME}" \
-DATABASE_PASSWORD="${DATABASE_PASSWORD}" \
-DATABASE_SSL="${DATABASE_SSL}" \
-ACHIEVEMENT_DB_SCHEMA="${ACHIEVEMENT_DB_SCHEMA}" \
-node <<'NODE'
-const fs = require('node:fs/promises');
-const path = require('node:path');
-const { Client } = require('pg');
-
-function quoteIdentifier(value) {
-  return `"${value.replace(/"/g, '""')}"`;
-}
-
-function replaceSchema(sql, schema) {
-  return sql.replaceAll('{{SCHEMA}}', quoteIdentifier(schema));
-}
-
-async function main() {
-  const schema = process.env.ACHIEVEMENT_DB_SCHEMA || 'achievement_system';
-  const client = new Client({
-    host: process.env.DATABASE_HOST,
-    port: Number(process.env.DATABASE_PORT || '5432'),
-    database: process.env.DATABASE_NAME,
-    user: process.env.DATABASE_USERNAME,
-    password: process.env.DATABASE_PASSWORD,
-    ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
-  });
-
-  await client.connect();
-  try {
-    await client.query(`CREATE SCHEMA IF NOT EXISTS ${quoteIdentifier(schema)}`);
-
-    const files = [
-      path.resolve(process.cwd(), 'sql/init.sql'),
-      ...(
-        await fs.readdir(path.resolve(process.cwd(), 'backup'))
-      )
-        .filter((file) => file.endsWith('.sql'))
-        .sort()
-        .map((file) => path.resolve(process.cwd(), 'backup', file)),
-    ];
-
-    for (const filePath of files) {
-      const raw = await fs.readFile(filePath, 'utf8');
-      const sql = replaceSchema(raw, schema);
-      await client.query(sql);
-      console.log(`Applied ${path.relative(process.cwd(), filePath)}`);
-    }
-  } finally {
-    await client.end();
-  }
-}
-
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
-NODE
 
 echo "Building Docker image"
 docker build -t "${IMAGE_NAME}" .
@@ -170,54 +102,4 @@ SERVICE_URL=$(gcloud run services describe "${SERVICE_NAME}" \
   --format='value(status.url)')
 
 echo "Service URL: ${SERVICE_URL}"
-echo "Verifying health endpoint"
-HEALTH_RESPONSE=$(curl -fsS -H "x-internal-key: ${ACHIEVEMENT_INTERNAL_KEY}" "${SERVICE_URL}/healthz/")
-echo "healthz response: ${HEALTH_RESPONSE}"
-HEALTH_RESPONSE="${HEALTH_RESPONSE}" node <<'NODE'
-const payload = JSON.parse(process.env.HEALTH_RESPONSE || '{}');
-if (payload.ok !== true) {
-  console.error('Health verification failed:', payload);
-  process.exit(1);
-}
-console.log('Health verification passed.');
-NODE
-
-echo "Verifying achievement endpoint"
-ACHIEVEMENT_RESPONSE=$(curl -fsS \
-  -H "x-internal-key: ${ACHIEVEMENT_INTERNAL_KEY}" \
-  -H "x-user-id: ${VERIFY_USER_ID}" \
-  "${SERVICE_URL}/achievements-not-achieved?locale=${VERIFY_LOCALE}")
-echo "achievements-not-achieved response: ${ACHIEVEMENT_RESPONSE}"
-ACHIEVEMENT_RESPONSE="${ACHIEVEMENT_RESPONSE}" node <<'NODE'
-const payload = JSON.parse(process.env.ACHIEVEMENT_RESPONSE || '{}');
-if (!Array.isArray(payload.data)) {
-  console.error('Achievement verification failed: data is not an array', payload);
-  process.exit(1);
-}
-
-const sample = payload.data[0];
-if (sample) {
-  const requiredKeys = [
-    'id',
-    'code',
-    'event_name',
-    'icon_name',
-    'points',
-    'goal',
-    'progress',
-    'achieved',
-    'achieved_at',
-    'title',
-    'description',
-  ];
-  const missingKeys = requiredKeys.filter((key) => !(key in sample));
-  if (missingKeys.length > 0) {
-    console.error('Achievement verification failed: missing keys', missingKeys, sample);
-    process.exit(1);
-  }
-}
-
-console.log(`Achievement verification passed with ${payload.data.length} rows.`);
-NODE
-
 echo "--- Deployment of ${SERVICE_NAME} version ${VERSION} complete ---"

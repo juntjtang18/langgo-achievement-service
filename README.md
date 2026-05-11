@@ -26,7 +26,7 @@ The upstream package includes a `prepare` script, so installing from GitHub buil
 - `GET /admin/login` and `GET /admin`
 - Internal API key auth via `x-internal-key`
 - Strapi-admin-backed authentication for the built-in admin UI
-- Postgres schema bootstrap and optional `backup/*.sql` restore
+- Postgres schema bootstrap support plus explicit DB backup/setup scripts
 - Event-bus subscription using the Postgres event bus client
 - Graceful shutdown and structured logs
 
@@ -70,6 +70,7 @@ cp .env.example .env
 3. Start in watch mode:
 
 ```bash
+./setupdb.sh
 npm run dev
 ```
 
@@ -118,20 +119,48 @@ curl \
   'http://localhost:8080/achievements-not-achieved?locale=en'
 ```
 
-## Database Init
+## Database Workflow
 
-Startup sequence:
+Use the committed plain SQL backup in [backup/achievement-system-backup.sql](/Users/James/develop/langgo/langgo-achievement-server/backup/achievement-system-backup.sql) as the restore source of truth.
 
-1. Connect to Postgres.
-2. Create `ACHIEVEMENT_DB_SCHEMA` if missing.
-3. Check for required tables.
-4. If required tables are missing, restore from `backup/*.sql` when present or create tables from `sql/init.sql`.
-5. If tables already exist but `as_achievements` is empty, retry restore from `backup/*.sql`.
-6. Start HTTP and event subscriptions only after initialization succeeds.
+Initialize the DB safely:
 
-The SQL files use a `{{SCHEMA}}` placeholder so the same scripts can initialize any configured schema.
+```bash
+./setupdb.sh
+```
 
-To regenerate the Strapi data restore file from `../langgo_strapi4/database/backup/langgo_full.sql`:
+Destructive reset:
+
+```bash
+./setupdb.sh --fresh
+./setupdb.sh --fresh --yes
+```
+
+Export the current schema and data back into the committed backup file:
+
+```bash
+./backupdb.sh
+```
+
+`backupdb.sh`:
+
+- loads `.env`
+- exports only `ACHIEVEMENT_DB_SCHEMA`
+- writes plain SQL to `backup/achievement-system-backup.sql`
+- includes schema objects, indexes, constraints, defaults, sequences, and data
+
+`setupdb.sh`:
+
+- loads `.env`
+- validates `ACHIEVEMENT_DB_SCHEMA`
+- creates the schema if missing
+- does nothing if required tables already exist
+- restores only from the committed backup SQL if required tables are missing
+- drops only `ACHIEVEMENT_DB_SCHEMA` in `--fresh` mode
+
+The committed backup SQL uses a `{{SCHEMA}}` placeholder so the same backup can be restored into any valid `ACHIEVEMENT_DB_SCHEMA`.
+
+To regenerate the Strapi-derived seed file from `../langgo_strapi4/database/backup/langgo_full.sql`:
 
 ```bash
 npm run generate:restore-sql
@@ -160,12 +189,10 @@ Use the provided deploy script:
 
 `deploy.sh` does the following:
 
-- regenerates `backup/strapi4-achievement-data.restore.sql`
-- applies `sql/init.sql` and `backup/*.sql` to the configured Cloud SQL schema
 - builds and pushes the Docker image
 - deploys the Cloud Run service
-- verifies `/healthz`
-- verifies `/achievements-not-achieved` returns `{ "data": [...] }` with the expected achievement fields
+
+It does not create, reset, seed, or restore the database. Run `./setupdb.sh` separately if the target DB schema needs to be installed first.
 
 The script relies on the GitHub `event-bus-client` dependency through the Docker build. The build stage installs `git`, so GitHub-based npm dependencies resolve correctly in Cloud Run image builds.
 
