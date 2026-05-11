@@ -180,7 +180,9 @@ Subscribed event names come from `as_event_lists.event_name`.
 
 Incoming events map to the old Strapi behavior:
 
-- user id from `payload.userid`, `payload.userId`, nested `review`, `flashcard`, or `article`
+- canonical sibling event-bus format from `../langgo_subsys_strapi4`:
+  `topic = event name`, payload uses top-level `eventId`, `eventName`/`event_name`, `userId`/`user_id`, and `username`
+- user id from top-level `payload.user_id`, `payload.userid`, `payload.userId`, then nested `review`, `flashcard`, or `article`
 - username from `payload.username`, `payload.userName`, nested `review`, `flashcard`, or `article`
 - progress increment uses `as_achievements.points`
 - achievement completes when `progress >= goal`

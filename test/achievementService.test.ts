@@ -129,6 +129,19 @@ describe('achievement service', () => {
         },
       },
       {
+        testCase: 'top-level user_id/username on canonical sibling event payload',
+        topic: 'flashcard.review',
+        payload: {
+          user_id: 1021,
+          username: 'bravo-underscore',
+        },
+        expected: {
+          event_name: 'flashcard.review',
+          userid: '1021',
+          username: 'bravo-underscore',
+        },
+      },
+      {
         testCase: 'nested review.userid/review.username on flashcard.review',
         topic: 'flashcard.review',
         payload: {
@@ -247,6 +260,70 @@ describe('achievement service', () => {
       reportCase(entry.testCase, entry.expected, actual);
       expect(actual).toEqual(entry.expected);
     }
+  });
+
+  it('prefers the canonical sibling event format while remaining backward compatible', async () => {
+    const calls: any[] = [];
+    const eventHandler = new EventHandlerService({
+      applyEvent: async (event) => {
+        calls.push(event);
+        return { updated: 1 };
+      },
+    } as ProgressService);
+
+    await eventHandler.handle({
+      topic: '',
+      payload: {
+        eventName: 'flashcard.review',
+        eventId: 'evt-100',
+        user_id: 501,
+        username: 'canonical-user',
+        _meta: {
+          source: 'event-bus',
+          topic: 'flashcard.review',
+        },
+      },
+      ack: async () => undefined,
+      nack: async () => undefined,
+    });
+
+    await eventHandler.handle({
+      topic: 'flashcard.create',
+      payload: {
+        flashcard: {
+          userId: 502,
+          userName: 'legacy-user',
+        },
+      },
+      ack: async () => undefined,
+      nack: async () => undefined,
+    });
+
+    const expected = [
+      {
+        event_name: 'flashcard.review',
+        userid: '501',
+        username: 'canonical-user',
+      },
+      {
+        event_name: 'flashcard.create',
+        userid: '502',
+        username: 'legacy-user',
+      },
+    ];
+
+    const actual = calls.map((event) => ({
+      event_name: event.event_name,
+      userid: event.userid,
+      username: event.username,
+    }));
+
+    reportCase(
+      'achievement handler aligns with sibling canonical top-level payload format and legacy nested payloads',
+      expected,
+      actual
+    );
+    expect(actual).toEqual(expected);
   });
 
   it('applies progress increments for every supported achievement event type', async () => {

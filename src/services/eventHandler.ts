@@ -3,6 +3,7 @@ import { ProgressService } from './progressService';
 
 function pickUserId(payload: Record<string, any> = {}): string | number | null {
   return (
+    payload.user_id ??
     payload.userid ??
     payload.userId ??
     payload.review?.userid ??
