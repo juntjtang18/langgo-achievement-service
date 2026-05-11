@@ -32,7 +32,9 @@ function createTestApp() {
     } as any,
     adminAuthService: {
       getLoginUrl: () => 'https://example.com/admin/auth/login',
-      getSession: () => null,
+      getSession: (sessionId?: string | null) => sessionId === 'valid-session'
+        ? { id: 'valid-session', email: 'admin@example.com', strapiToken: 'token' }
+        : null,
       deleteSession: () => undefined,
       login: async () => {
         throw new Error('not implemented');
@@ -99,5 +101,18 @@ describe('http routes', () => {
     expect(response.status).toBe(200);
     expect(response.text).toContain('Achievement Admin');
     expect(response.text).toContain('Strapi-backed auth');
+  });
+
+  it('renders only the selected admin section content', async () => {
+    const app = createTestApp();
+
+    const response = await request(app)
+      .get('/admin/events')
+      .set('Cookie', 'achievement_admin_session=valid-session');
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Manual Event Emit');
+    expect(response.text).not.toContain('User Achievements</h2>');
+    expect(response.text).not.toContain('Translations</h2>');
   });
 });
