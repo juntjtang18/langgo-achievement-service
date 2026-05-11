@@ -229,4 +229,66 @@ describe('http routes', () => {
     expect(response.text).toContain('flashcard.review');
     expect(response.text).not.toContain('Manual Event Emit</h2>');
   });
+
+  it('normalizes legacy manual event payloads into the canonical sibling event-bus format', async () => {
+    const publishes: Array<{ topic: string; payload: any }> = [];
+    const app = createApp({
+      achievementService: {
+        ensureUserAchievements: async () => undefined,
+        listAchievedByUserid: async () => [],
+        listNotAchievedByUserid: async () => [],
+      } as any,
+      adminRepository: {
+        listAchievements: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
+        listTranslations: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
+        listEventLists: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
+        listUserAchievements: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
+        listEventLogs: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
+        listAchievementChangeLogs: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
+      } as any,
+      adminAuthService: {
+        getLoginUrl: () => 'https://example.com/admin/auth/login',
+        getSession: (sessionId?: string | null) => sessionId === 'valid-session'
+          ? { id: 'valid-session', email: 'admin@example.com', strapiToken: 'token', roles: ['strapi-super-admin'] }
+          : null,
+        deleteSession: () => undefined,
+        login: async () => {
+          throw new Error('not implemented');
+        },
+      } as any,
+      eventBus: {
+        publish: async (topic: string, payload: any) => {
+          publishes.push({ topic, payload });
+          return { driver: 'postgres', topic, publishedAt: new Date().toISOString() };
+        },
+        subscribe: async () => ({ topic: 'x', unsubscribe: async () => undefined }),
+        close: async () => undefined,
+      } as any,
+      subscriberService: {
+        refresh: async () => undefined,
+        close: async () => undefined,
+      } as any,
+      logger: createLogger('silent'),
+      internalKey: 'secret',
+    });
+
+    const response = await request(app)
+      .post('/admin/events/emit')
+      .set('Cookie', 'achievement_admin_session=valid-session')
+      .type('form')
+      .send({
+        topic: 'flashcard.review',
+        payload_json: '{"userid":"8","username":"vivian"}',
+      });
+
+    expect(response.status).toBe(302);
+    expect(publishes).toHaveLength(1);
+    expect(publishes[0].topic).toBe('flashcard.review');
+    expect(publishes[0].payload.event_name).toBe('flashcard.review');
+    expect(publishes[0].payload.eventName).toBe('flashcard.review');
+    expect(publishes[0].payload.userId).toBe('8');
+    expect(publishes[0].payload.username).toBe('vivian');
+    expect(typeof publishes[0].payload.eventId).toBe('string');
+    expect(publishes[0].payload.eventId.length).toBeGreaterThan(0);
+  });
 });

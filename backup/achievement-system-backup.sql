@@ -5,7 +5,7 @@
 -- Dumped from database version 14.22
 -- Dumped by pg_dump version 14.18 (Homebrew)
 
--- Started on 2026-05-10 23:20:20 PDT
+-- Started on 2026-05-10 23:35:47 PDT
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -19,8 +19,8 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- TOC entry 5 (class 2615 OID 95111)
--- Name: achievement_system_verify; Type: SCHEMA; Schema: -; Owner: -
+-- TOC entry 7 (class 2615 OID 94792)
+-- Name: achievement_system; Type: SCHEMA; Schema: -; Owner: -
 --
 
 CREATE SCHEMA {{SCHEMA}};
@@ -31,8 +31,8 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
--- TOC entry 344 (class 1259 OID 95192)
--- Name: as_achievement_change_logs; Type: TABLE; Schema: achievement_system_verify; Owner: -
+-- TOC entry 332 (class 1259 OID 95080)
+-- Name: as_achievement_change_logs; Type: TABLE; Schema: achievement_system; Owner: -
 --
 
 CREATE TABLE {{SCHEMA}}.as_achievement_change_logs (
@@ -54,8 +54,8 @@ CREATE TABLE {{SCHEMA}}.as_achievement_change_logs (
 
 
 --
--- TOC entry 343 (class 1259 OID 95191)
--- Name: as_achievement_change_logs_id_seq; Type: SEQUENCE; Schema: achievement_system_verify; Owner: -
+-- TOC entry 331 (class 1259 OID 95079)
+-- Name: as_achievement_change_logs_id_seq; Type: SEQUENCE; Schema: achievement_system; Owner: -
 --
 
 CREATE SEQUENCE {{SCHEMA}}.as_achievement_change_logs_id_seq
@@ -68,16 +68,16 @@ CREATE SEQUENCE {{SCHEMA}}.as_achievement_change_logs_id_seq
 
 --
 -- TOC entry 4250 (class 0 OID 0)
--- Dependencies: 343
--- Name: as_achievement_change_logs_id_seq; Type: SEQUENCE OWNED BY; Schema: achievement_system_verify; Owner: -
+-- Dependencies: 331
+-- Name: as_achievement_change_logs_id_seq; Type: SEQUENCE OWNED BY; Schema: achievement_system; Owner: -
 --
 
 ALTER SEQUENCE {{SCHEMA}}.as_achievement_change_logs_id_seq OWNED BY {{SCHEMA}}.as_achievement_change_logs.id;
 
 
 --
--- TOC entry 333 (class 1259 OID 95112)
--- Name: as_achievement_translations; Type: TABLE; Schema: achievement_system_verify; Owner: -
+-- TOC entry 321 (class 1259 OID 94793)
+-- Name: as_achievement_translations; Type: TABLE; Schema: achievement_system; Owner: -
 --
 
 CREATE TABLE {{SCHEMA}}.as_achievement_translations (
@@ -92,8 +92,8 @@ CREATE TABLE {{SCHEMA}}.as_achievement_translations (
 
 
 --
--- TOC entry 334 (class 1259 OID 95120)
--- Name: as_achievement_translations_id_seq; Type: SEQUENCE; Schema: achievement_system_verify; Owner: -
+-- TOC entry 322 (class 1259 OID 94801)
+-- Name: as_achievement_translations_id_seq; Type: SEQUENCE; Schema: achievement_system; Owner: -
 --
 
 CREATE SEQUENCE {{SCHEMA}}.as_achievement_translations_id_seq
@@ -106,16 +106,16 @@ CREATE SEQUENCE {{SCHEMA}}.as_achievement_translations_id_seq
 
 --
 -- TOC entry 4251 (class 0 OID 0)
--- Dependencies: 334
--- Name: as_achievement_translations_id_seq; Type: SEQUENCE OWNED BY; Schema: achievement_system_verify; Owner: -
+-- Dependencies: 322
+-- Name: as_achievement_translations_id_seq; Type: SEQUENCE OWNED BY; Schema: achievement_system; Owner: -
 --
 
 ALTER SEQUENCE {{SCHEMA}}.as_achievement_translations_id_seq OWNED BY {{SCHEMA}}.as_achievement_translations.id;
 
 
 --
--- TOC entry 335 (class 1259 OID 95121)
--- Name: as_achievements; Type: TABLE; Schema: achievement_system_verify; Owner: -
+-- TOC entry 323 (class 1259 OID 94802)
+-- Name: as_achievements; Type: TABLE; Schema: achievement_system; Owner: -
 --
 
 CREATE TABLE {{SCHEMA}}.as_achievements (
@@ -131,8 +131,8 @@ CREATE TABLE {{SCHEMA}}.as_achievements (
 
 
 --
--- TOC entry 336 (class 1259 OID 95129)
--- Name: as_achievements_id_seq; Type: SEQUENCE; Schema: achievement_system_verify; Owner: -
+-- TOC entry 324 (class 1259 OID 94810)
+-- Name: as_achievements_id_seq; Type: SEQUENCE; Schema: achievement_system; Owner: -
 --
 
 CREATE SEQUENCE {{SCHEMA}}.as_achievements_id_seq
@@ -145,16 +145,16 @@ CREATE SEQUENCE {{SCHEMA}}.as_achievements_id_seq
 
 --
 -- TOC entry 4252 (class 0 OID 0)
--- Dependencies: 336
--- Name: as_achievements_id_seq; Type: SEQUENCE OWNED BY; Schema: achievement_system_verify; Owner: -
+-- Dependencies: 324
+-- Name: as_achievements_id_seq; Type: SEQUENCE OWNED BY; Schema: achievement_system; Owner: -
 --
 
 ALTER SEQUENCE {{SCHEMA}}.as_achievements_id_seq OWNED BY {{SCHEMA}}.as_achievements.id;
 
 
 --
--- TOC entry 337 (class 1259 OID 95130)
--- Name: as_event_lists; Type: TABLE; Schema: achievement_system_verify; Owner: -
+-- TOC entry 325 (class 1259 OID 94811)
+-- Name: as_event_lists; Type: TABLE; Schema: achievement_system; Owner: -
 --
 
 CREATE TABLE {{SCHEMA}}.as_event_lists (
@@ -167,8 +167,8 @@ CREATE TABLE {{SCHEMA}}.as_event_lists (
 
 
 --
--- TOC entry 338 (class 1259 OID 95136)
--- Name: as_event_lists_id_seq; Type: SEQUENCE; Schema: achievement_system_verify; Owner: -
+-- TOC entry 326 (class 1259 OID 94817)
+-- Name: as_event_lists_id_seq; Type: SEQUENCE; Schema: achievement_system; Owner: -
 --
 
 CREATE SEQUENCE {{SCHEMA}}.as_event_lists_id_seq
@@ -181,16 +181,16 @@ CREATE SEQUENCE {{SCHEMA}}.as_event_lists_id_seq
 
 --
 -- TOC entry 4253 (class 0 OID 0)
--- Dependencies: 338
--- Name: as_event_lists_id_seq; Type: SEQUENCE OWNED BY; Schema: achievement_system_verify; Owner: -
+-- Dependencies: 326
+-- Name: as_event_lists_id_seq; Type: SEQUENCE OWNED BY; Schema: achievement_system; Owner: -
 --
 
 ALTER SEQUENCE {{SCHEMA}}.as_event_lists_id_seq OWNED BY {{SCHEMA}}.as_event_lists.id;
 
 
 --
--- TOC entry 342 (class 1259 OID 95182)
--- Name: as_event_logs; Type: TABLE; Schema: achievement_system_verify; Owner: -
+-- TOC entry 330 (class 1259 OID 95070)
+-- Name: as_event_logs; Type: TABLE; Schema: achievement_system; Owner: -
 --
 
 CREATE TABLE {{SCHEMA}}.as_event_logs (
@@ -204,8 +204,8 @@ CREATE TABLE {{SCHEMA}}.as_event_logs (
 
 
 --
--- TOC entry 341 (class 1259 OID 95181)
--- Name: as_event_logs_id_seq; Type: SEQUENCE; Schema: achievement_system_verify; Owner: -
+-- TOC entry 329 (class 1259 OID 95069)
+-- Name: as_event_logs_id_seq; Type: SEQUENCE; Schema: achievement_system; Owner: -
 --
 
 CREATE SEQUENCE {{SCHEMA}}.as_event_logs_id_seq
@@ -218,16 +218,16 @@ CREATE SEQUENCE {{SCHEMA}}.as_event_logs_id_seq
 
 --
 -- TOC entry 4254 (class 0 OID 0)
--- Dependencies: 341
--- Name: as_event_logs_id_seq; Type: SEQUENCE OWNED BY; Schema: achievement_system_verify; Owner: -
+-- Dependencies: 329
+-- Name: as_event_logs_id_seq; Type: SEQUENCE OWNED BY; Schema: achievement_system; Owner: -
 --
 
 ALTER SEQUENCE {{SCHEMA}}.as_event_logs_id_seq OWNED BY {{SCHEMA}}.as_event_logs.id;
 
 
 --
--- TOC entry 339 (class 1259 OID 95137)
--- Name: as_user_achievements; Type: TABLE; Schema: achievement_system_verify; Owner: -
+-- TOC entry 327 (class 1259 OID 94818)
+-- Name: as_user_achievements; Type: TABLE; Schema: achievement_system; Owner: -
 --
 
 CREATE TABLE {{SCHEMA}}.as_user_achievements (
@@ -244,8 +244,8 @@ CREATE TABLE {{SCHEMA}}.as_user_achievements (
 
 
 --
--- TOC entry 340 (class 1259 OID 95146)
--- Name: as_user_achievements_id_seq; Type: SEQUENCE; Schema: achievement_system_verify; Owner: -
+-- TOC entry 328 (class 1259 OID 94827)
+-- Name: as_user_achievements_id_seq; Type: SEQUENCE; Schema: achievement_system; Owner: -
 --
 
 CREATE SEQUENCE {{SCHEMA}}.as_user_achievements_id_seq
@@ -258,75 +258,87 @@ CREATE SEQUENCE {{SCHEMA}}.as_user_achievements_id_seq
 
 --
 -- TOC entry 4255 (class 0 OID 0)
--- Dependencies: 340
--- Name: as_user_achievements_id_seq; Type: SEQUENCE OWNED BY; Schema: achievement_system_verify; Owner: -
+-- Dependencies: 328
+-- Name: as_user_achievements_id_seq; Type: SEQUENCE OWNED BY; Schema: achievement_system; Owner: -
 --
 
 ALTER SEQUENCE {{SCHEMA}}.as_user_achievements_id_seq OWNED BY {{SCHEMA}}.as_user_achievements.id;
 
 
 --
--- TOC entry 4057 (class 2604 OID 95195)
--- Name: as_achievement_change_logs id; Type: DEFAULT; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4057 (class 2604 OID 95083)
+-- Name: as_achievement_change_logs id; Type: DEFAULT; Schema: achievement_system; Owner: -
 --
 
 ALTER TABLE ONLY {{SCHEMA}}.as_achievement_change_logs ALTER COLUMN id SET DEFAULT nextval('{{SCHEMA}}.as_achievement_change_logs_id_seq'::regclass);
 
 
 --
--- TOC entry 4041 (class 2604 OID 95147)
--- Name: as_achievement_translations id; Type: DEFAULT; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4041 (class 2604 OID 94828)
+-- Name: as_achievement_translations id; Type: DEFAULT; Schema: achievement_system; Owner: -
 --
 
 ALTER TABLE ONLY {{SCHEMA}}.as_achievement_translations ALTER COLUMN id SET DEFAULT nextval('{{SCHEMA}}.as_achievement_translations_id_seq'::regclass);
 
 
 --
--- TOC entry 4045 (class 2604 OID 95148)
--- Name: as_achievements id; Type: DEFAULT; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4045 (class 2604 OID 94829)
+-- Name: as_achievements id; Type: DEFAULT; Schema: achievement_system; Owner: -
 --
 
 ALTER TABLE ONLY {{SCHEMA}}.as_achievements ALTER COLUMN id SET DEFAULT nextval('{{SCHEMA}}.as_achievements_id_seq'::regclass);
 
 
 --
--- TOC entry 4049 (class 2604 OID 95149)
--- Name: as_event_lists id; Type: DEFAULT; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4049 (class 2604 OID 94830)
+-- Name: as_event_lists id; Type: DEFAULT; Schema: achievement_system; Owner: -
 --
 
 ALTER TABLE ONLY {{SCHEMA}}.as_event_lists ALTER COLUMN id SET DEFAULT nextval('{{SCHEMA}}.as_event_lists_id_seq'::regclass);
 
 
 --
--- TOC entry 4055 (class 2604 OID 95185)
--- Name: as_event_logs id; Type: DEFAULT; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4055 (class 2604 OID 95073)
+-- Name: as_event_logs id; Type: DEFAULT; Schema: achievement_system; Owner: -
 --
 
 ALTER TABLE ONLY {{SCHEMA}}.as_event_logs ALTER COLUMN id SET DEFAULT nextval('{{SCHEMA}}.as_event_logs_id_seq'::regclass);
 
 
 --
--- TOC entry 4054 (class 2604 OID 95150)
--- Name: as_user_achievements id; Type: DEFAULT; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4054 (class 2604 OID 94831)
+-- Name: as_user_achievements id; Type: DEFAULT; Schema: achievement_system; Owner: -
 --
 
 ALTER TABLE ONLY {{SCHEMA}}.as_user_achievements ALTER COLUMN id SET DEFAULT nextval('{{SCHEMA}}.as_user_achievements_id_seq'::regclass);
 
 
 --
--- TOC entry 4244 (class 0 OID 95192)
--- Dependencies: 344
--- Data for Name: as_achievement_change_logs; Type: TABLE DATA; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4244 (class 0 OID 95080)
+-- Dependencies: 332
+-- Data for Name: as_achievement_change_logs; Type: TABLE DATA; Schema: achievement_system; Owner: -
 --
 
 COPY {{SCHEMA}}.as_achievement_change_logs (id, event_log_id, achievement_id, user_achievement_id, event_name, userid, username, points_added, progress_before, progress_after, achieved_before, achieved_after, achieved_at, created_at) FROM stdin;
+1	1	13	39	flashcard.review	8	vivian	1	844	845	f	f	\N	2026-05-11 06:24:03.117857+00
+2	1	14	40	flashcard.review	8	vivian	1	844	845	f	f	\N	2026-05-11 06:24:03.117857+00
+3	1	15	41	flashcard.review	8	vivian	1	844	845	f	f	\N	2026-05-11 06:24:03.117857+00
+4	1	16	42	flashcard.review	8	vivian	1	844	845	f	f	\N	2026-05-11 06:24:03.117857+00
+5	2	13	39	flashcard.review	8	vivian	1	845	846	f	f	\N	2026-05-11 06:25:01.327114+00
+6	2	14	40	flashcard.review	8	vivian	1	845	846	f	f	\N	2026-05-11 06:25:01.327114+00
+7	2	15	41	flashcard.review	8	vivian	1	845	846	f	f	\N	2026-05-11 06:25:01.327114+00
+8	2	16	42	flashcard.review	8	vivian	1	845	846	f	f	\N	2026-05-11 06:25:01.327114+00
+9	3	13	39	flashcard.review	8	vivian	1	846	847	f	f	\N	2026-05-11 06:34:00.414913+00
+10	3	14	40	flashcard.review	8	vivian	1	846	847	f	f	\N	2026-05-11 06:34:00.414913+00
+11	3	15	41	flashcard.review	8	vivian	1	846	847	f	f	\N	2026-05-11 06:34:00.414913+00
+12	3	16	42	flashcard.review	8	vivian	1	846	847	f	f	\N	2026-05-11 06:34:00.414913+00
 \.
 
 
 --
--- TOC entry 4233 (class 0 OID 95112)
--- Dependencies: 333
--- Data for Name: as_achievement_translations; Type: TABLE DATA; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4233 (class 0 OID 94793)
+-- Dependencies: 321
+-- Data for Name: as_achievement_translations; Type: TABLE DATA; Schema: achievement_system; Owner: -
 --
 
 COPY {{SCHEMA}}.as_achievement_translations (id, achievement_id, locale, title, description, created_at, updated_at) FROM stdin;
@@ -542,9 +554,9 @@ COPY {{SCHEMA}}.as_achievement_translations (id, achievement_id, locale, title, 
 
 
 --
--- TOC entry 4235 (class 0 OID 95121)
--- Dependencies: 335
--- Data for Name: as_achievements; Type: TABLE DATA; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4235 (class 0 OID 94802)
+-- Dependencies: 323
+-- Data for Name: as_achievements; Type: TABLE DATA; Schema: achievement_system; Owner: -
 --
 
 COPY {{SCHEMA}}.as_achievements (id, code, event_name, icon_name, points, goal, created_at, updated_at) FROM stdin;
@@ -578,9 +590,9 @@ COPY {{SCHEMA}}.as_achievements (id, code, event_name, icon_name, points, goal, 
 
 
 --
--- TOC entry 4237 (class 0 OID 95130)
--- Dependencies: 337
--- Data for Name: as_event_lists; Type: TABLE DATA; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4237 (class 0 OID 94811)
+-- Dependencies: 325
+-- Data for Name: as_event_lists; Type: TABLE DATA; Schema: achievement_system; Owner: -
 --
 
 COPY {{SCHEMA}}.as_event_lists (id, event_name, points, created_at, updated_at) FROM stdin;
@@ -592,19 +604,22 @@ COPY {{SCHEMA}}.as_event_lists (id, event_name, points, created_at, updated_at) 
 
 
 --
--- TOC entry 4242 (class 0 OID 95182)
--- Dependencies: 342
--- Data for Name: as_event_logs; Type: TABLE DATA; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4242 (class 0 OID 95070)
+-- Dependencies: 330
+-- Data for Name: as_event_logs; Type: TABLE DATA; Schema: achievement_system; Owner: -
 --
 
 COPY {{SCHEMA}}.as_event_logs (id, event_name, userid, username, payload_json, received_at) FROM stdin;
+1	flashcard.review	8	vivian	{"userid": "8", "username": "vivian"}	2026-05-11 06:24:03.117857+00
+2	flashcard.review	8	vivian	{"userid": "8", "username": "vivian"}	2026-05-11 06:25:01.327114+00
+3	flashcard.review	8	vivian	{"userid": "8", "username": "vivian"}	2026-05-11 06:34:00.414913+00
 \.
 
 
 --
--- TOC entry 4239 (class 0 OID 95137)
--- Dependencies: 339
--- Data for Name: as_user_achievements; Type: TABLE DATA; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4239 (class 0 OID 94818)
+-- Dependencies: 327
+-- Data for Name: as_user_achievements; Type: TABLE DATA; Schema: achievement_system; Owner: -
 --
 
 COPY {{SCHEMA}}.as_user_achievements (id, userid, username, achievement_id, progress, achieved, achieved_at, created_at, updated_at) FROM stdin;
@@ -646,10 +661,6 @@ COPY {{SCHEMA}}.as_user_achievements (id, userid, username, achievement_id, prog
 36	8	vivian	10	100	t	2026-05-06 02:15:33.338+00	2026-05-06 02:06:32.63+00	2026-05-06 02:15:33.349+00
 37	8	vivian	11	200	t	2026-05-07 04:41:36.998+00	2026-05-06 02:06:32.649+00	2026-05-07 04:41:37.018+00
 38	8	vivian	12	500	t	2026-05-08 06:09:31.298+00	2026-05-06 02:06:32.717+00	2026-05-08 06:09:31.313+00
-39	8	vivian	13	840	f	\N	2026-05-06 02:06:32.731+00	2026-05-10 05:19:20.657+00
-40	8	vivian	14	840	f	\N	2026-05-06 02:06:32.751+00	2026-05-10 05:19:20.702+00
-41	8	vivian	15	840	f	\N	2026-05-06 02:06:34.418+00	2026-05-10 05:19:20.768+00
-42	8	vivian	16	840	f	\N	2026-05-06 02:06:34.439+00	2026-05-10 05:19:20.886+00
 43	8	vivian	17	0	f	\N	2026-05-06 02:06:34.471+00	2026-05-06 02:06:34.471+00
 44	8	vivian	18	0	f	\N	2026-05-06 02:06:34.535+00	2026-05-06 02:06:34.535+00
 45	8	vivian	19	0	f	\N	2026-05-06 02:06:34.555+00	2026-05-06 02:06:34.555+00
@@ -695,6 +706,7 @@ COPY {{SCHEMA}}.as_user_achievements (id, userid, username, achievement_id, prog
 85	71	chinese3@langgo.ca	7	17	f	\N	2026-05-06 00:01:03.973+00	2026-05-06 00:16:35.803+00
 86	71	chinese3@langgo.ca	8	17	f	\N	2026-05-06 00:01:05.296+00	2026-05-06 00:16:36.366+00
 87	71	chinese3@langgo.ca	9	17	f	\N	2026-05-06 00:01:06.248+00	2026-05-06 00:16:36.962+00
+39	8	vivian	13	847	f	\N	2026-05-06 02:06:32.731+00	2026-05-11 06:34:00.414913+00
 88	71	chinese3@langgo.ca	10	17	f	\N	2026-05-06 00:01:06.662+00	2026-05-06 00:16:53.413+00
 89	71	chinese3@langgo.ca	11	17	f	\N	2026-05-06 00:01:06.965+00	2026-05-06 00:16:53.956+00
 90	71	chinese3@langgo.ca	12	17	f	\N	2026-05-06 00:01:07.215+00	2026-05-06 00:16:54.487+00
@@ -764,22 +776,25 @@ COPY {{SCHEMA}}.as_user_achievements (id, userid, username, achievement_id, prog
 204	30	july7	24	0	f	\N	2026-05-09 00:50:58.365+00	2026-05-09 00:50:58.365+00
 206	30	july7	25	0	f	\N	2026-05-09 00:50:58.571+00	2026-05-09 00:50:58.571+00
 208	30	july7	26	0	f	\N	2026-05-09 00:50:58.78+00	2026-05-09 00:50:58.78+00
+40	8	vivian	14	847	f	\N	2026-05-06 02:06:32.751+00	2026-05-11 06:34:00.414913+00
+41	8	vivian	15	847	f	\N	2026-05-06 02:06:34.418+00	2026-05-11 06:34:00.414913+00
+42	8	vivian	16	847	f	\N	2026-05-06 02:06:34.439+00	2026-05-11 06:34:00.414913+00
 \.
 
 
 --
 -- TOC entry 4256 (class 0 OID 0)
--- Dependencies: 343
--- Name: as_achievement_change_logs_id_seq; Type: SEQUENCE SET; Schema: achievement_system_verify; Owner: -
+-- Dependencies: 331
+-- Name: as_achievement_change_logs_id_seq; Type: SEQUENCE SET; Schema: achievement_system; Owner: -
 --
 
-SELECT pg_catalog.setval('{{SCHEMA}}.as_achievement_change_logs_id_seq', 1, false);
+SELECT pg_catalog.setval('{{SCHEMA}}.as_achievement_change_logs_id_seq', 12, true);
 
 
 --
 -- TOC entry 4257 (class 0 OID 0)
--- Dependencies: 334
--- Name: as_achievement_translations_id_seq; Type: SEQUENCE SET; Schema: achievement_system_verify; Owner: -
+-- Dependencies: 322
+-- Name: as_achievement_translations_id_seq; Type: SEQUENCE SET; Schema: achievement_system; Owner: -
 --
 
 SELECT pg_catalog.setval('{{SCHEMA}}.as_achievement_translations_id_seq', 233, true);
@@ -787,8 +802,8 @@ SELECT pg_catalog.setval('{{SCHEMA}}.as_achievement_translations_id_seq', 233, t
 
 --
 -- TOC entry 4258 (class 0 OID 0)
--- Dependencies: 336
--- Name: as_achievements_id_seq; Type: SEQUENCE SET; Schema: achievement_system_verify; Owner: -
+-- Dependencies: 324
+-- Name: as_achievements_id_seq; Type: SEQUENCE SET; Schema: achievement_system; Owner: -
 --
 
 SELECT pg_catalog.setval('{{SCHEMA}}.as_achievements_id_seq', 26, true);
@@ -796,8 +811,8 @@ SELECT pg_catalog.setval('{{SCHEMA}}.as_achievements_id_seq', 26, true);
 
 --
 -- TOC entry 4259 (class 0 OID 0)
--- Dependencies: 338
--- Name: as_event_lists_id_seq; Type: SEQUENCE SET; Schema: achievement_system_verify; Owner: -
+-- Dependencies: 326
+-- Name: as_event_lists_id_seq; Type: SEQUENCE SET; Schema: achievement_system; Owner: -
 --
 
 SELECT pg_catalog.setval('{{SCHEMA}}.as_event_lists_id_seq', 4, true);
@@ -805,25 +820,25 @@ SELECT pg_catalog.setval('{{SCHEMA}}.as_event_lists_id_seq', 4, true);
 
 --
 -- TOC entry 4260 (class 0 OID 0)
--- Dependencies: 341
--- Name: as_event_logs_id_seq; Type: SEQUENCE SET; Schema: achievement_system_verify; Owner: -
+-- Dependencies: 329
+-- Name: as_event_logs_id_seq; Type: SEQUENCE SET; Schema: achievement_system; Owner: -
 --
 
-SELECT pg_catalog.setval('{{SCHEMA}}.as_event_logs_id_seq', 1, false);
+SELECT pg_catalog.setval('{{SCHEMA}}.as_event_logs_id_seq', 3, true);
 
 
 --
 -- TOC entry 4261 (class 0 OID 0)
--- Dependencies: 340
--- Name: as_user_achievements_id_seq; Type: SEQUENCE SET; Schema: achievement_system_verify; Owner: -
+-- Dependencies: 328
+-- Name: as_user_achievements_id_seq; Type: SEQUENCE SET; Schema: achievement_system; Owner: -
 --
 
 SELECT pg_catalog.setval('{{SCHEMA}}.as_user_achievements_id_seq', 208, true);
 
 
 --
--- TOC entry 4087 (class 2606 OID 95200)
--- Name: as_achievement_change_logs as_achievement_change_logs_pkey; Type: CONSTRAINT; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4087 (class 2606 OID 95088)
+-- Name: as_achievement_change_logs as_achievement_change_logs_pkey; Type: CONSTRAINT; Schema: achievement_system; Owner: -
 --
 
 ALTER TABLE ONLY {{SCHEMA}}.as_achievement_change_logs
@@ -831,8 +846,8 @@ ALTER TABLE ONLY {{SCHEMA}}.as_achievement_change_logs
 
 
 --
--- TOC entry 4060 (class 2606 OID 95152)
--- Name: as_achievement_translations as_achievement_translations_achievement_id_locale_key; Type: CONSTRAINT; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4060 (class 2606 OID 94833)
+-- Name: as_achievement_translations as_achievement_translations_achievement_id_locale_key; Type: CONSTRAINT; Schema: achievement_system; Owner: -
 --
 
 ALTER TABLE ONLY {{SCHEMA}}.as_achievement_translations
@@ -840,8 +855,8 @@ ALTER TABLE ONLY {{SCHEMA}}.as_achievement_translations
 
 
 --
--- TOC entry 4063 (class 2606 OID 95154)
--- Name: as_achievement_translations as_achievement_translations_pkey; Type: CONSTRAINT; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4063 (class 2606 OID 94835)
+-- Name: as_achievement_translations as_achievement_translations_pkey; Type: CONSTRAINT; Schema: achievement_system; Owner: -
 --
 
 ALTER TABLE ONLY {{SCHEMA}}.as_achievement_translations
@@ -849,8 +864,8 @@ ALTER TABLE ONLY {{SCHEMA}}.as_achievement_translations
 
 
 --
--- TOC entry 4065 (class 2606 OID 95156)
--- Name: as_achievements as_achievements_code_key; Type: CONSTRAINT; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4065 (class 2606 OID 94837)
+-- Name: as_achievements as_achievements_code_key; Type: CONSTRAINT; Schema: achievement_system; Owner: -
 --
 
 ALTER TABLE ONLY {{SCHEMA}}.as_achievements
@@ -858,8 +873,8 @@ ALTER TABLE ONLY {{SCHEMA}}.as_achievements
 
 
 --
--- TOC entry 4068 (class 2606 OID 95158)
--- Name: as_achievements as_achievements_pkey; Type: CONSTRAINT; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4068 (class 2606 OID 94839)
+-- Name: as_achievements as_achievements_pkey; Type: CONSTRAINT; Schema: achievement_system; Owner: -
 --
 
 ALTER TABLE ONLY {{SCHEMA}}.as_achievements
@@ -867,8 +882,8 @@ ALTER TABLE ONLY {{SCHEMA}}.as_achievements
 
 
 --
--- TOC entry 4071 (class 2606 OID 95160)
--- Name: as_event_lists as_event_lists_pkey; Type: CONSTRAINT; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4071 (class 2606 OID 94841)
+-- Name: as_event_lists as_event_lists_pkey; Type: CONSTRAINT; Schema: achievement_system; Owner: -
 --
 
 ALTER TABLE ONLY {{SCHEMA}}.as_event_lists
@@ -876,8 +891,8 @@ ALTER TABLE ONLY {{SCHEMA}}.as_event_lists
 
 
 --
--- TOC entry 4080 (class 2606 OID 95190)
--- Name: as_event_logs as_event_logs_pkey; Type: CONSTRAINT; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4080 (class 2606 OID 95078)
+-- Name: as_event_logs as_event_logs_pkey; Type: CONSTRAINT; Schema: achievement_system; Owner: -
 --
 
 ALTER TABLE ONLY {{SCHEMA}}.as_event_logs
@@ -885,8 +900,8 @@ ALTER TABLE ONLY {{SCHEMA}}.as_event_logs
 
 
 --
--- TOC entry 4074 (class 2606 OID 95162)
--- Name: as_user_achievements as_user_achievements_pkey; Type: CONSTRAINT; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4074 (class 2606 OID 94843)
+-- Name: as_user_achievements as_user_achievements_pkey; Type: CONSTRAINT; Schema: achievement_system; Owner: -
 --
 
 ALTER TABLE ONLY {{SCHEMA}}.as_user_achievements
@@ -894,8 +909,8 @@ ALTER TABLE ONLY {{SCHEMA}}.as_user_achievements
 
 
 --
--- TOC entry 4076 (class 2606 OID 95164)
--- Name: as_user_achievements as_user_achievements_userid_achievement_id_key; Type: CONSTRAINT; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4076 (class 2606 OID 94845)
+-- Name: as_user_achievements as_user_achievements_userid_achievement_id_key; Type: CONSTRAINT; Schema: achievement_system; Owner: -
 --
 
 ALTER TABLE ONLY {{SCHEMA}}.as_user_achievements
@@ -903,104 +918,104 @@ ALTER TABLE ONLY {{SCHEMA}}.as_user_achievements
 
 
 --
--- TOC entry 4083 (class 1259 OID 95221)
--- Name: as_achievement_change_logs_achievement_idx; Type: INDEX; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4083 (class 1259 OID 95109)
+-- Name: as_achievement_change_logs_achievement_idx; Type: INDEX; Schema: achievement_system; Owner: -
 --
 
 CREATE INDEX as_achievement_change_logs_achievement_idx ON {{SCHEMA}}.as_achievement_change_logs USING btree (achievement_id);
 
 
 --
--- TOC entry 4084 (class 1259 OID 95222)
--- Name: as_achievement_change_logs_created_at_idx; Type: INDEX; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4084 (class 1259 OID 95110)
+-- Name: as_achievement_change_logs_created_at_idx; Type: INDEX; Schema: achievement_system; Owner: -
 --
 
 CREATE INDEX as_achievement_change_logs_created_at_idx ON {{SCHEMA}}.as_achievement_change_logs USING btree (created_at DESC);
 
 
 --
--- TOC entry 4085 (class 1259 OID 95219)
--- Name: as_achievement_change_logs_event_log_idx; Type: INDEX; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4085 (class 1259 OID 95107)
+-- Name: as_achievement_change_logs_event_log_idx; Type: INDEX; Schema: achievement_system; Owner: -
 --
 
 CREATE INDEX as_achievement_change_logs_event_log_idx ON {{SCHEMA}}.as_achievement_change_logs USING btree (event_log_id);
 
 
 --
--- TOC entry 4088 (class 1259 OID 95220)
--- Name: as_achievement_change_logs_userid_idx; Type: INDEX; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4088 (class 1259 OID 95108)
+-- Name: as_achievement_change_logs_userid_idx; Type: INDEX; Schema: achievement_system; Owner: -
 --
 
 CREATE INDEX as_achievement_change_logs_userid_idx ON {{SCHEMA}}.as_achievement_change_logs USING btree (userid);
 
 
 --
--- TOC entry 4061 (class 1259 OID 95165)
--- Name: as_achievement_translations_locale_idx; Type: INDEX; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4061 (class 1259 OID 94846)
+-- Name: as_achievement_translations_locale_idx; Type: INDEX; Schema: achievement_system; Owner: -
 --
 
 CREATE INDEX as_achievement_translations_locale_idx ON {{SCHEMA}}.as_achievement_translations USING btree (locale);
 
 
 --
--- TOC entry 4066 (class 1259 OID 95166)
--- Name: as_achievements_event_name_idx; Type: INDEX; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4066 (class 1259 OID 94847)
+-- Name: as_achievements_event_name_idx; Type: INDEX; Schema: achievement_system; Owner: -
 --
 
 CREATE INDEX as_achievements_event_name_idx ON {{SCHEMA}}.as_achievements USING btree (event_name);
 
 
 --
--- TOC entry 4069 (class 1259 OID 95167)
--- Name: as_event_lists_event_name_idx; Type: INDEX; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4069 (class 1259 OID 94848)
+-- Name: as_event_lists_event_name_idx; Type: INDEX; Schema: achievement_system; Owner: -
 --
 
 CREATE INDEX as_event_lists_event_name_idx ON {{SCHEMA}}.as_event_lists USING btree (event_name);
 
 
 --
--- TOC entry 4078 (class 1259 OID 95216)
--- Name: as_event_logs_event_name_idx; Type: INDEX; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4078 (class 1259 OID 95104)
+-- Name: as_event_logs_event_name_idx; Type: INDEX; Schema: achievement_system; Owner: -
 --
 
 CREATE INDEX as_event_logs_event_name_idx ON {{SCHEMA}}.as_event_logs USING btree (event_name);
 
 
 --
--- TOC entry 4081 (class 1259 OID 95218)
--- Name: as_event_logs_received_at_idx; Type: INDEX; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4081 (class 1259 OID 95106)
+-- Name: as_event_logs_received_at_idx; Type: INDEX; Schema: achievement_system; Owner: -
 --
 
 CREATE INDEX as_event_logs_received_at_idx ON {{SCHEMA}}.as_event_logs USING btree (received_at DESC);
 
 
 --
--- TOC entry 4082 (class 1259 OID 95217)
--- Name: as_event_logs_userid_idx; Type: INDEX; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4082 (class 1259 OID 95105)
+-- Name: as_event_logs_userid_idx; Type: INDEX; Schema: achievement_system; Owner: -
 --
 
 CREATE INDEX as_event_logs_userid_idx ON {{SCHEMA}}.as_event_logs USING btree (userid);
 
 
 --
--- TOC entry 4072 (class 1259 OID 95168)
--- Name: as_user_achievements_achievement_idx; Type: INDEX; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4072 (class 1259 OID 94849)
+-- Name: as_user_achievements_achievement_idx; Type: INDEX; Schema: achievement_system; Owner: -
 --
 
 CREATE INDEX as_user_achievements_achievement_idx ON {{SCHEMA}}.as_user_achievements USING btree (achievement_id);
 
 
 --
--- TOC entry 4077 (class 1259 OID 95169)
--- Name: as_user_achievements_userid_idx; Type: INDEX; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4077 (class 1259 OID 94850)
+-- Name: as_user_achievements_userid_idx; Type: INDEX; Schema: achievement_system; Owner: -
 --
 
 CREATE INDEX as_user_achievements_userid_idx ON {{SCHEMA}}.as_user_achievements USING btree (userid);
 
 
 --
--- TOC entry 4091 (class 2606 OID 95206)
--- Name: as_achievement_change_logs as_achievement_change_logs_achievement_id_fkey; Type: FK CONSTRAINT; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4092 (class 2606 OID 95094)
+-- Name: as_achievement_change_logs as_achievement_change_logs_achievement_id_fkey; Type: FK CONSTRAINT; Schema: achievement_system; Owner: -
 --
 
 ALTER TABLE ONLY {{SCHEMA}}.as_achievement_change_logs
@@ -1008,8 +1023,8 @@ ALTER TABLE ONLY {{SCHEMA}}.as_achievement_change_logs
 
 
 --
--- TOC entry 4092 (class 2606 OID 95201)
--- Name: as_achievement_change_logs as_achievement_change_logs_event_log_id_fkey; Type: FK CONSTRAINT; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4091 (class 2606 OID 95089)
+-- Name: as_achievement_change_logs as_achievement_change_logs_event_log_id_fkey; Type: FK CONSTRAINT; Schema: achievement_system; Owner: -
 --
 
 ALTER TABLE ONLY {{SCHEMA}}.as_achievement_change_logs
@@ -1017,8 +1032,8 @@ ALTER TABLE ONLY {{SCHEMA}}.as_achievement_change_logs
 
 
 --
--- TOC entry 4093 (class 2606 OID 95211)
--- Name: as_achievement_change_logs as_achievement_change_logs_user_achievement_id_fkey; Type: FK CONSTRAINT; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4093 (class 2606 OID 95099)
+-- Name: as_achievement_change_logs as_achievement_change_logs_user_achievement_id_fkey; Type: FK CONSTRAINT; Schema: achievement_system; Owner: -
 --
 
 ALTER TABLE ONLY {{SCHEMA}}.as_achievement_change_logs
@@ -1026,8 +1041,8 @@ ALTER TABLE ONLY {{SCHEMA}}.as_achievement_change_logs
 
 
 --
--- TOC entry 4089 (class 2606 OID 95170)
--- Name: as_achievement_translations as_achievement_translations_achievement_id_fkey; Type: FK CONSTRAINT; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4089 (class 2606 OID 94851)
+-- Name: as_achievement_translations as_achievement_translations_achievement_id_fkey; Type: FK CONSTRAINT; Schema: achievement_system; Owner: -
 --
 
 ALTER TABLE ONLY {{SCHEMA}}.as_achievement_translations
@@ -1035,15 +1050,15 @@ ALTER TABLE ONLY {{SCHEMA}}.as_achievement_translations
 
 
 --
--- TOC entry 4090 (class 2606 OID 95175)
--- Name: as_user_achievements as_user_achievements_achievement_id_fkey; Type: FK CONSTRAINT; Schema: achievement_system_verify; Owner: -
+-- TOC entry 4090 (class 2606 OID 94856)
+-- Name: as_user_achievements as_user_achievements_achievement_id_fkey; Type: FK CONSTRAINT; Schema: achievement_system; Owner: -
 --
 
 ALTER TABLE ONLY {{SCHEMA}}.as_user_achievements
     ADD CONSTRAINT as_user_achievements_achievement_id_fkey FOREIGN KEY (achievement_id) REFERENCES {{SCHEMA}}.as_achievements(id) ON DELETE CASCADE;
 
 
--- Completed on 2026-05-10 23:20:24 PDT
+-- Completed on 2026-05-10 23:35:50 PDT
 
 --
 -- PostgreSQL database dump complete
