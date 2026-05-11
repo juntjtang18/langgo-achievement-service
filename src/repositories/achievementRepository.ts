@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 import { Database, getSchemaQualifiedTable } from '../db';
-import type { AchievementDefinition, AchievementTranslation, UserAchievementRow } from '../types';
+import type { AchievementChangeLogRow, AchievementDefinition, AchievementTranslation, EventLogRow, UserAchievementRow } from '../types';
 
 interface AchievementRow {
   id: number;
@@ -24,12 +24,16 @@ export class AchievementRepository {
   private readonly translationsTable: string;
   private readonly eventListsTable: string;
   private readonly userAchievementsTable: string;
+  private readonly eventLogsTable: string;
+  private readonly changeLogsTable: string;
 
   constructor(private readonly db: Database) {
     this.achievementsTable = getSchemaQualifiedTable(db.schema, 'as_achievements');
     this.translationsTable = getSchemaQualifiedTable(db.schema, 'as_achievement_translations');
     this.eventListsTable = getSchemaQualifiedTable(db.schema, 'as_event_lists');
     this.userAchievementsTable = getSchemaQualifiedTable(db.schema, 'as_user_achievements');
+    this.eventLogsTable = getSchemaQualifiedTable(db.schema, 'as_event_logs');
+    this.changeLogsTable = getSchemaQualifiedTable(db.schema, 'as_achievement_change_logs');
   }
 
   async listAchievements(): Promise<AchievementDefinition[]> {
@@ -147,6 +151,46 @@ export class AchievementRepository {
            updated_at = NOW()
        WHERE id = $1`,
       [userAchievementId, username, progress, achieved, achievedAt]
+    );
+  }
+
+  async insertEventLog(
+    input: Omit<EventLogRow, 'id' | 'received_at'>,
+    client: PoolClient
+  ): Promise<number> {
+    const result = await client.query<{ id: number }>(
+      `INSERT INTO ${this.eventLogsTable} (event_name, userid, username, payload_json)
+       VALUES ($1, $2, $3, $4::jsonb)
+       RETURNING id`,
+      [input.event_name, input.userid, input.username, JSON.stringify(input.payload_json ?? {})]
+    );
+
+    return result.rows[0].id;
+  }
+
+  async insertAchievementChangeLog(
+    input: Omit<AchievementChangeLogRow, 'id' | 'created_at'>,
+    client: PoolClient
+  ): Promise<void> {
+    await client.query(
+      `INSERT INTO ${this.changeLogsTable}
+       (event_log_id, achievement_id, user_achievement_id, event_name, userid, username,
+        points_added, progress_before, progress_after, achieved_before, achieved_after, achieved_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+      [
+        input.event_log_id,
+        input.achievement_id,
+        input.user_achievement_id,
+        input.event_name,
+        input.userid,
+        input.username,
+        input.points_added,
+        input.progress_before,
+        input.progress_after,
+        input.achieved_before,
+        input.achieved_after,
+        input.achieved_at,
+      ]
     );
   }
 }

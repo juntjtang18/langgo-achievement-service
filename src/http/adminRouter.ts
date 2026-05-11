@@ -5,7 +5,9 @@ import type { EventBus } from '../types';
 import {
   AdminRepository,
   type AdminAchievementRow,
+  type AdminAchievementChangeLogRow,
   type AdminEventListRow,
+  type AdminEventLogRow,
   type AdminPageQuery,
   type AdminPageResult,
   type AdminTranslationRow,
@@ -18,7 +20,7 @@ const SESSION_COOKIE = 'achievement_admin_session';
 const DEFAULT_ADMIN_PATH = '/admin/events';
 const DEFAULT_PAGE_SIZE = 20;
 
-type AdminSection = 'events' | 'achievements' | 'translations' | 'event-lists' | 'user-achievements';
+type AdminSection = 'events' | 'achievements' | 'translations' | 'event-lists' | 'user-achievements' | 'event-logs' | 'change-logs';
 
 interface AdminLayoutOptions {
   notice?: string | null;
@@ -193,6 +195,8 @@ function renderLayout(title: string, content: string, options: AdminLayoutOption
           ${navLink('translations', '/admin/translations', 'Translations', options.activeSection)}
           ${navLink('event-lists', '/admin/event-lists', 'Event Lists', options.activeSection)}
           ${navLink('user-achievements', '/admin/user-achievements', 'User Achievements', options.activeSection)}
+          ${navLink('event-logs', '/admin/event-logs', 'Event Logs', options.activeSection)}
+          ${navLink('change-logs', '/admin/change-logs', 'Change Logs', options.activeSection)}
         </nav>
       </div>
     </aside>` : '';
@@ -499,6 +503,69 @@ function renderUserAchievementsPage(result: AdminPageResult<AdminUserAchievement
   );
 }
 
+function renderEventLogsPage(result: AdminPageResult<AdminEventLogRow>, state: PageState, options: AdminLayoutOptions): string {
+  const rows = result.rows.map((row) => `
+    <tr>
+      <td>${row.id}</td>
+      <td class="font-monospace">${escapeHtml(row.event_name)}</td>
+      <td class="font-monospace">${escapeHtml(row.userid ?? '')}</td>
+      <td class="font-monospace">${escapeHtml(row.username ?? '')}</td>
+      <td>${escapeHtml(row.received_at)}</td>
+      <td>
+        <details>
+          <summary class="small">payload_json</summary>
+          <pre class="small mb-0 mt-2 font-monospace">${escapeHtml(row.payload_json)}</pre>
+        </details>
+      </td>
+    </tr>`).join('');
+
+  return renderSectionShell(
+    'Event Logs',
+    'Latest event-bus messages persisted in as_event_logs.',
+    `${renderFilterToolbar('/admin/event-logs', state, result.total)}
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead class="sticky-header"><tr><th>id</th><th>event_name</th><th>userid</th><th>username</th><th>received_at</th><th>payload_json</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`,
+    options
+  );
+}
+
+function renderChangeLogsPage(result: AdminPageResult<AdminAchievementChangeLogRow>, state: PageState, options: AdminLayoutOptions): string {
+  const rows = result.rows.map((row) => `
+    <tr>
+      <td>${row.id}</td>
+      <td>${row.event_log_id}</td>
+      <td>${row.achievement_id}</td>
+      <td>${row.user_achievement_id}</td>
+      <td class="font-monospace">${escapeHtml(row.event_name)}</td>
+      <td class="font-monospace">${escapeHtml(row.userid)}</td>
+      <td class="font-monospace">${escapeHtml(row.username ?? '')}</td>
+      <td>${row.points_added}</td>
+      <td>${row.progress_before}</td>
+      <td>${row.progress_after}</td>
+      <td>${row.achieved_before ? 'true' : 'false'}</td>
+      <td>${row.achieved_after ? 'true' : 'false'}</td>
+      <td>${escapeHtml(row.achieved_at ?? '')}</td>
+      <td>${escapeHtml(row.created_at)}</td>
+    </tr>`).join('');
+
+  return renderSectionShell(
+    'Change Logs',
+    'Per-achievement progress changes persisted for each handled event.',
+    `${renderFilterToolbar('/admin/change-logs', state, result.total)}
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead class="sticky-header"><tr><th>id</th><th>event_log_id</th><th>achievement_id</th><th>user_achievement_id</th><th>event_name</th><th>userid</th><th>username</th><th>points_added</th><th>progress_before</th><th>progress_after</th><th>achieved_before</th><th>achieved_after</th><th>achieved_at</th><th>created_at</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`,
+    options
+  );
+}
+
 function renderNewAchievementPage(options: AdminLayoutOptions): string {
   return renderNewRecordPage(
     'New Achievement',
@@ -667,6 +734,28 @@ export function createAdminRouter(deps: AdminRouterDependencies): Router {
     } catch (error) {
       deps.logger.error({ err: error }, 'failed to render user achievements admin page');
       redirectWithNotice(res, buildSectionUrl('/admin/user-achievements', state), 'error', error instanceof Error ? error.message : 'Failed to load user achievements.');
+    }
+  });
+
+  router.get('/event-logs', async (req, res) => {
+    const state = readPageState(req);
+    try {
+      const result = await deps.repository.listEventLogs(pageQuery(state));
+      res.type('html').send(renderEventLogsPage(result, state, pageOptions(req, res.locals.adminSession.email, 'event-logs')));
+    } catch (error) {
+      deps.logger.error({ err: error }, 'failed to render event logs admin page');
+      redirectWithNotice(res, buildSectionUrl('/admin/event-logs', state), 'error', error instanceof Error ? error.message : 'Failed to load event logs.');
+    }
+  });
+
+  router.get('/change-logs', async (req, res) => {
+    const state = readPageState(req);
+    try {
+      const result = await deps.repository.listAchievementChangeLogs(pageQuery(state));
+      res.type('html').send(renderChangeLogsPage(result, state, pageOptions(req, res.locals.adminSession.email, 'change-logs')));
+    } catch (error) {
+      deps.logger.error({ err: error }, 'failed to render change logs admin page');
+      redirectWithNotice(res, buildSectionUrl('/admin/change-logs', state), 'error', error instanceof Error ? error.message : 'Failed to load change logs.');
     }
   });
 

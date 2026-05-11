@@ -15,11 +15,18 @@ export class ProgressService {
     const username = event.username || null;
     const eventName = event.event_name;
 
-    if (!userid || !eventName) {
-      return { updated: 0 };
-    }
-
     return this.db.withTransaction(async (client) => {
+      const eventLogId = await this.repository.insertEventLog({
+        event_name: eventName,
+        userid,
+        username,
+        payload_json: event.payload ?? {},
+      }, client);
+
+      if (!userid || !eventName) {
+        return { updated: 0 };
+      }
+
       await this.repository.ensureUserAchievements(userid, username, client);
       const rows = await this.repository.listAchievementProgressForEvent(userid, eventName, client);
 
@@ -34,6 +41,8 @@ export class ProgressService {
           continue;
         }
 
+        const previousProgress = row.progress || 0;
+        const previousAchieved = Boolean(row.achieved);
         const nextProgress = (row.progress || 0) + (row.points || 0);
         const achieved = nextProgress >= (row.goal || 0);
         const achievedAt = achieved ? (row.achieved_at || new Date().toISOString()) : null;
@@ -46,6 +55,21 @@ export class ProgressService {
           achievedAt,
           client
         );
+
+        await this.repository.insertAchievementChangeLog({
+          event_log_id: eventLogId,
+          achievement_id: row.achievement_id,
+          user_achievement_id: row.id,
+          event_name: eventName,
+          userid,
+          username,
+          points_added: row.points || 0,
+          progress_before: previousProgress,
+          progress_after: nextProgress,
+          achieved_before: previousAchieved,
+          achieved_after: achieved,
+          achieved_at: achievedAt,
+        }, client);
 
         updated += 1;
       }

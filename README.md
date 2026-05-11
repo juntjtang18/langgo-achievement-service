@@ -28,6 +28,7 @@ The upstream package includes a `prepare` script, so installing from GitHub buil
 - Strapi-admin-backed authentication for the built-in admin UI
 - Postgres schema bootstrap support plus explicit DB backup/setup scripts
 - Event-bus subscription using the Postgres event bus client
+- Audit persistence for received events and per-achievement point changes
 - Graceful shutdown and structured logs
 
 ## Environment
@@ -93,6 +94,8 @@ The admin login form authenticates against `STRAPI_ADMIN_URL`, verifies the Stra
 - `as_achievement_translations`
 - `as_event_lists`
 - `as_user_achievements`
+- `as_event_logs`
+- `as_achievement_change_logs`
 
 The admin page also includes a manual event publisher that sends JSON payloads through the configured event bus so you can test the live achievement logic.
 
@@ -103,6 +106,8 @@ Admin table pages use Bootstrap styling and are route-based:
 - `/admin/translations`
 - `/admin/event-lists`
 - `/admin/user-achievements`
+- `/admin/event-logs`
+- `/admin/change-logs`
 
 Each CRUD table page supports:
 
@@ -148,6 +153,7 @@ Export the current schema and data back into the committed backup file:
 - exports only `ACHIEVEMENT_DB_SCHEMA`
 - writes plain SQL to `backup/achievement-system-backup.sql`
 - includes schema objects, indexes, constraints, defaults, sequences, and data
+- intentionally omits DB users, roles, ownership, and privileges because they are not required for this service restore
 
 `setupdb.sh`:
 
@@ -178,6 +184,8 @@ Incoming events map to the old Strapi behavior:
 - username from `payload.username`, `payload.userName`, nested `review`, `flashcard`, or `article`
 - progress increment uses `as_achievements.points`
 - achievement completes when `progress >= goal`
+
+Every received event is persisted to `as_event_logs` first. Any resulting progress mutations are persisted to `as_achievement_change_logs` in the same DB transaction.
 
 ## Cloud Run
 

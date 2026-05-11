@@ -269,6 +269,9 @@ describe('achievement service', () => {
       { achievement_id: 3, event_name: 'flashcard.remembered', points: 3, goal: 3 },
       { achievement_id: 4, event_name: 'article.create', points: 1, goal: 1 },
     ];
+    const eventLogs: Array<{ id: number; event_name: string; userid: string | null; username: string | null; payload_json: unknown }> = [];
+    const changeLogs: Array<{ event_log_id: number; achievement_id: number; points_added: number; progress_before: number; progress_after: number }> = [];
+    let nextEventLogId = 1;
 
     const db = {
       withTransaction: async (callback: (client: unknown) => Promise<{ updated: number }>) => callback({}),
@@ -313,6 +316,20 @@ describe('achievement service', () => {
             row.achieved_at = achievedAt;
           }
         }
+      },
+      insertEventLog: async (input: { event_name: string; userid: string | null; username: string | null; payload_json: unknown }) => {
+        eventLogs.push({ id: nextEventLogId, ...input });
+        nextEventLogId += 1;
+        return nextEventLogId - 1;
+      },
+      insertAchievementChangeLog: async (input: {
+        event_log_id: number;
+        achievement_id: number;
+        points_added: number;
+        progress_before: number;
+        progress_after: number;
+      }) => {
+        changeLogs.push(input);
       },
     } as any;
 
@@ -404,5 +421,43 @@ describe('achievement service', () => {
       reportCase(entry.testCase, entry.expected, actual);
       expect(actual).toEqual(entry.expected);
     }
+
+    const auditActual = {
+      eventLogs: eventLogs.map((row) => ({ event_name: row.event_name, userid: row.userid })),
+      changeLogs: changeLogs.map((row) => ({
+        event_log_id: row.event_log_id,
+        achievement_id: row.achievement_id,
+        points_added: row.points_added,
+        progress_before: row.progress_before,
+        progress_after: row.progress_after,
+      })),
+    };
+    const auditExpected = {
+      eventLogs: [
+        { event_name: 'flashcard.create', userid: '200' },
+        { event_name: 'flashcard.review', userid: '200' },
+        { event_name: 'flashcard.remembered', userid: '200' },
+        { event_name: 'article.create', userid: '200' },
+        { event_name: 'flashcard.create', userid: '200' },
+        { event_name: 'flashcard.review', userid: '200' },
+        { event_name: 'flashcard.review', userid: '200' },
+      ],
+      changeLogs: [
+        { event_log_id: 1, achievement_id: 1, points_added: 1, progress_before: 0, progress_after: 1 },
+        { event_log_id: 2, achievement_id: 2, points_added: 2, progress_before: 0, progress_after: 2 },
+        { event_log_id: 3, achievement_id: 3, points_added: 3, progress_before: 0, progress_after: 3 },
+        { event_log_id: 4, achievement_id: 4, points_added: 1, progress_before: 0, progress_after: 1 },
+        { event_log_id: 5, achievement_id: 1, points_added: 1, progress_before: 1, progress_after: 2 },
+        { event_log_id: 6, achievement_id: 2, points_added: 2, progress_before: 2, progress_after: 4 },
+        { event_log_id: 7, achievement_id: 2, points_added: 2, progress_before: 4, progress_after: 6 },
+      ],
+    };
+
+    reportCase(
+      'audit persistence writes one event log per received event and one change log per progress update',
+      auditExpected,
+      auditActual
+    );
+    expect(auditActual).toEqual(auditExpected);
   });
 });

@@ -1,0 +1,63 @@
+
+
+Refactor DB/deploy workflow into three simple scripts:
+deploy.sh
+build and deploy to cloud run
+does not care about db. 
+
+backupdb.sh
+Purpose: export the current Achievement System DB package into plain SQL that can be committed to git.
+
+Behavior:
+
+Load .env
+Connect to configured Postgres DB
+Export only ACHIEVEMENT_DB_SCHEMA
+Include:
+schema
+tables
+indexes
+constraints
+sequences/defaults
+grants/authorities if applicable
+table data
+Output plain SQL to:
+backup/
+
+
+setupdb.sh
+Purpose: install or reset the Achievement System schema from committed plain backup result. restore all:
+schema
+tables
+indexes
+constraints
+sequences/defaults
+grants/authorities if applicable
+table data
+
+Default mode:
+./setupdb.sh
+
+Behavior:
+Load .env
+Create ACHIEVEMENT_DB_SCHEMA if missing
+Check whether required tables exist
+If required tables already exist, do nothing
+If required tables are missing, apply backup sql 
+Never overwrite existing data by default
+
+Fresh mode:
+./setupdb.sh --fresh
+./setupdb.sh --fresh --yes
+Behavior:
+Destructive reset
+Drop only ACHIEVEMENT_DB_SCHEMA
+Recreate schema
+Apply backup sql 
+Require explicit confirmation unless --yes is provided
+
+Safety:
+Validate ACHIEVEMENT_DB_SCHEMA before using it in SQL.
+Never drop anything outside ACHIEVEMENT_DB_SCHEMA.
+deploy.sh must never touch DB.
+setupdb.sh must only use committed plain SQL from backup sql

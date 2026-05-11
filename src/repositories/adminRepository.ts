@@ -47,6 +47,32 @@ export interface AdminUserAchievementRow {
   achieved_at: string | null;
 }
 
+export interface AdminEventLogRow {
+  id: number;
+  event_name: string;
+  userid: string | null;
+  username: string | null;
+  payload_json: string;
+  received_at: string;
+}
+
+export interface AdminAchievementChangeLogRow {
+  id: number;
+  event_log_id: number;
+  achievement_id: number;
+  user_achievement_id: number;
+  event_name: string;
+  userid: string;
+  username: string | null;
+  points_added: number;
+  progress_before: number;
+  progress_after: number;
+  achieved_before: boolean;
+  achieved_after: boolean;
+  achieved_at: string | null;
+  created_at: string;
+}
+
 function sanitizeWhereClause(whereClause: string | null): string {
   if (!whereClause) {
     return '';
@@ -69,12 +95,16 @@ export class AdminRepository {
   private readonly translationsTable: string;
   private readonly eventListsTable: string;
   private readonly userAchievementsTable: string;
+  private readonly eventLogsTable: string;
+  private readonly changeLogsTable: string;
 
   constructor(private readonly db: Database) {
     this.achievementsTable = getSchemaQualifiedTable(db.schema, 'as_achievements');
     this.translationsTable = getSchemaQualifiedTable(db.schema, 'as_achievement_translations');
     this.eventListsTable = getSchemaQualifiedTable(db.schema, 'as_event_lists');
     this.userAchievementsTable = getSchemaQualifiedTable(db.schema, 'as_user_achievements');
+    this.eventLogsTable = getSchemaQualifiedTable(db.schema, 'as_event_logs');
+    this.changeLogsTable = getSchemaQualifiedTable(db.schema, 'as_achievement_change_logs');
   }
 
   async listAchievements(query: AdminPageQuery): Promise<AdminPageResult<AdminAchievementRow>> {
@@ -109,6 +139,26 @@ export class AdminRepository {
       table: this.userAchievementsTable,
       select: 'id, userid, username, achievement_id, progress, achieved, achieved_at::text AS achieved_at',
       orderBy: 'updated_at DESC, id DESC',
+      query,
+    });
+  }
+
+  async listEventLogs(query: AdminPageQuery): Promise<AdminPageResult<AdminEventLogRow>> {
+    return this.listPage<AdminEventLogRow>({
+      table: this.eventLogsTable,
+      select: 'id, event_name, userid, username, payload_json::text AS payload_json, received_at::text AS received_at',
+      orderBy: 'received_at DESC, id DESC',
+      query,
+    });
+  }
+
+  async listAchievementChangeLogs(query: AdminPageQuery): Promise<AdminPageResult<AdminAchievementChangeLogRow>> {
+    return this.listPage<AdminAchievementChangeLogRow>({
+      table: this.changeLogsTable,
+      select: `id, event_log_id, achievement_id, user_achievement_id, event_name, userid, username,
+               points_added, progress_before, progress_after, achieved_before, achieved_after,
+               achieved_at::text AS achieved_at, created_at::text AS created_at`,
+      orderBy: 'created_at DESC, id DESC',
       query,
     });
   }

@@ -98,6 +98,8 @@ REQUIRED_TABLES=(
   "as_achievement_translations"
   "as_event_lists"
   "as_user_achievements"
+  "as_event_logs"
+  "as_achievement_change_logs"
 )
 
 cleanup() {
@@ -159,9 +161,12 @@ echo "Ensuring schema ${ACHIEVEMENT_DB_SCHEMA} exists"
 psql_query "CREATE SCHEMA IF NOT EXISTS \"${ACHIEVEMENT_DB_SCHEMA}\";" >/dev/null
 
 missing_tables=()
+existing_required_count=0
 for table_name in "${REQUIRED_TABLES[@]}"; do
   exists="$(psql_query "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = '${ACHIEVEMENT_DB_SCHEMA}' AND table_name = '${table_name}');" | tr -d '[:space:]')"
-  if [ "${exists}" != "t" ]; then
+  if [ "${exists}" = "t" ]; then
+    existing_required_count=$((existing_required_count + 1))
+  else
     missing_tables+=("${table_name}")
   fi
 done
@@ -172,6 +177,14 @@ if [ "${#missing_tables[@]}" -eq 0 ]; then
 fi
 
 echo "Missing required tables: ${missing_tables[*]}"
-echo "Applying committed backup SQL without dropping existing schema."
-psql_exec_file "${RESTORE_FILE}"
+if [ "${existing_required_count}" -gt 0 ]; then
+  echo "Schema already contains achievement tables. Applying sql/init.sql to create only missing tables."
+  INIT_FILE="$(mktemp "${TMPDIR:-/tmp}/achievement-init.XXXXXX.sql")"
+  perl -pe 's/\{\{SCHEMA\}\}/'"${ACHIEVEMENT_DB_SCHEMA}"'/g' "${PROJECT_ROOT}/sql/init.sql" > "${INIT_FILE}"
+  psql_exec_file "${INIT_FILE}"
+  rm -f "${INIT_FILE}"
+else
+  echo "Applying committed backup SQL without dropping existing schema."
+  psql_exec_file "${RESTORE_FILE}"
+fi
 echo "Setup complete."

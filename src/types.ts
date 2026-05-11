@@ -47,6 +47,32 @@ export interface AchievementEvent {
   payload: unknown;
 }
 
+export interface EventLogRow {
+  id: number;
+  event_name: string;
+  userid: string | null;
+  username: string | null;
+  payload_json: unknown;
+  received_at: string;
+}
+
+export interface AchievementChangeLogRow {
+  id: number;
+  event_log_id: number;
+  achievement_id: number;
+  user_achievement_id: number;
+  event_name: string;
+  userid: string;
+  username: string | null;
+  points_added: number;
+  progress_before: number;
+  progress_after: number;
+  achieved_before: boolean;
+  achieved_after: boolean;
+  achieved_at: string | null;
+  created_at: string;
+}
+
 export interface EventBusMessage<TPayload = unknown> {
   topic: string;
   payload: TPayload;

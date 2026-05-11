@@ -80,6 +80,8 @@ pg_dump \
   --schema="${ACHIEVEMENT_DB_SCHEMA}" \
   --format=plain \
   --encoding=UTF8 \
+  --no-owner \
+  --no-privileges \
   --verbose \
   --file="${TEMP_FILE}"
 

@@ -9,6 +9,8 @@ const REQUIRED_TABLES = [
   'as_achievement_translations',
   'as_event_lists',
   'as_user_achievements',
+  'as_event_logs',
+  'as_achievement_change_logs',
 ] as const;
 
 function quoteIdentifier(value: string): string {
@@ -47,9 +49,14 @@ export class Database {
 
     const tablesPresent = await this.hasRequiredTables();
     if (!tablesPresent) {
-      const restored = await this.restoreFromBackupIfPresent();
-      if (!restored) {
+      const existingTableCount = await this.countExistingRequiredTables();
+      if (existingTableCount > 0) {
         await this.applySqlFile(path.resolve(process.cwd(), 'sql/init.sql'));
+      } else {
+        const restored = await this.restoreFromBackupIfPresent();
+        if (!restored) {
+          await this.applySqlFile(path.resolve(process.cwd(), 'sql/init.sql'));
+        }
       }
     }
 
@@ -95,6 +102,10 @@ export class Database {
   }
 
   private async hasRequiredTables(): Promise<boolean> {
+    return (await this.countExistingRequiredTables()) === REQUIRED_TABLES.length;
+  }
+
+  private async countExistingRequiredTables(): Promise<number> {
     const result = await this.query<{ table_name: string }>(
       `
         SELECT table_name
@@ -105,7 +116,7 @@ export class Database {
       [this.schema, REQUIRED_TABLES]
     );
 
-    return REQUIRED_TABLES.every((table) => result.rows.some((row) => row.table_name === table));
+    return result.rows.length;
   }
 
   private async hasSeedData(): Promise<boolean> {

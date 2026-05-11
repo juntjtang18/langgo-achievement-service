@@ -29,6 +29,8 @@ function createTestApp() {
       listTranslations: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
       listEventLists: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
       listUserAchievements: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
+      listEventLogs: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
+      listAchievementChangeLogs: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
     } as any,
     adminAuthService: {
       getLoginUrl: () => 'https://example.com/admin/auth/login',
@@ -164,5 +166,67 @@ describe('http routes', () => {
     expect(response.text).not.toContain('action="/admin/achievements/create"');
     expect(response.text).not.toContain('Manual Event Emit</h2>');
     expect(response.text).not.toContain('User Achievements</h2>');
+  });
+
+  it('renders the event logs admin page with collapsed payload details', async () => {
+    const app = createApp({
+      achievementService: {
+        ensureUserAchievements: async () => undefined,
+        listAchievedByUserid: async () => [],
+        listNotAchievedByUserid: async () => [],
+      } as any,
+      adminRepository: {
+        listAchievements: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
+        listTranslations: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
+        listEventLists: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
+        listUserAchievements: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
+        listEventLogs: async () => ({
+          rows: [{
+            id: 1,
+            event_name: 'flashcard.review',
+            userid: '8',
+            username: 'vivian',
+            payload_json: '{"review":{"userId":8}}',
+            received_at: '2026-05-10T22:00:00.000Z',
+          }],
+          total: 1,
+          page: 1,
+          pageSize: 20,
+        }),
+        listAchievementChangeLogs: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
+      } as any,
+      adminAuthService: {
+        getLoginUrl: () => 'https://example.com/admin/auth/login',
+        getSession: (sessionId?: string | null) => sessionId === 'valid-session'
+          ? { id: 'valid-session', email: 'admin@example.com', strapiToken: 'token', roles: ['strapi-super-admin'] }
+          : null,
+        deleteSession: () => undefined,
+        login: async () => {
+          throw new Error('not implemented');
+        },
+      } as any,
+      eventBus: {
+        publish: async () => ({ driver: 'postgres', topic: 'x', publishedAt: new Date().toISOString() }),
+        subscribe: async () => ({ topic: 'x', unsubscribe: async () => undefined }),
+        close: async () => undefined,
+      } as any,
+      subscriberService: {
+        refresh: async () => undefined,
+        close: async () => undefined,
+      } as any,
+      logger: createLogger('silent'),
+      internalKey: 'secret',
+    });
+
+    const response = await request(app)
+      .get('/admin/event-logs')
+      .set('Cookie', 'achievement_admin_session=valid-session');
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Event Logs');
+    expect(response.text).toContain('<details>');
+    expect(response.text).toContain('payload_json');
+    expect(response.text).toContain('flashcard.review');
+    expect(response.text).not.toContain('Manual Event Emit</h2>');
   });
 });
