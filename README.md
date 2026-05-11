@@ -48,6 +48,8 @@ Defaults:
 - `EVENT_BUS_DRIVER=postgres`
 - `EVENT_BUS_CHANNEL_PREFIX=event_bus`
 
+The server now auto-loads a local `.env` file if one exists in the project root. If `.env` is absent, it falls back to the existing shell environment and the built-in defaults above.
+
 ## Local Run
 
 1. Install dependencies:
@@ -56,7 +58,11 @@ Defaults:
 npm install
 ```
 
-2. Set environment variables.
+2. Create `.env` from the example and fill in the real values:
+
+```bash
+cp .env.example .env
+```
 
 3. Start in watch mode:
 
@@ -77,7 +83,6 @@ Example request:
 curl \
   -H 'x-internal-key: replace-me' \
   -H 'x-user-id: 8' \
-  -H 'x-username: vivian' \
   'http://localhost:8080/achievements-not-achieved?locale=en'
 ```
 

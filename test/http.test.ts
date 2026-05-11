@@ -50,8 +50,7 @@ describe('http routes', () => {
     const response = await request(app)
       .get('/achievements-not-achieved?locale=en')
       .set('x-internal-key', 'secret')
-      .set('x-user-id', '8')
-      .set('x-username', 'vivian');
+      .set('x-user-id', '8');
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({

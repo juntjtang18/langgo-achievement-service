@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import dotenv = require('dotenv');
 import { z } from 'zod';
 
 const envSchema = z.object({
@@ -21,6 +24,21 @@ function parseBoolean(value: string): boolean {
   return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
 }
 
+let dotenvLoaded = false;
+
+function loadDotenvIfPresent(): void {
+  if (dotenvLoaded) {
+    return;
+  }
+
+  const envPath = path.resolve(process.cwd(), '.env');
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+  }
+
+  dotenvLoaded = true;
+}
+
 export interface AppConfig {
   port: number;
   logLevel: string;
@@ -37,6 +55,7 @@ export interface AppConfig {
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
+  loadDotenvIfPresent();
   const parsed = envSchema.parse(env);
 
   if (parsed.DATABASE_CLIENT !== 'postgres') {

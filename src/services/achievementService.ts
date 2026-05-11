@@ -47,8 +47,8 @@ function formatAchievement(
 export class AchievementService {
   constructor(private readonly repository: AchievementRepository) {}
 
-  async ensureUserAchievements(userid: string | number, username: string | null): Promise<void> {
-    await this.repository.ensureUserAchievements(String(userid), username);
+  async ensureUserAchievements(userid: string | number): Promise<void> {
+    await this.repository.ensureUserAchievements(String(userid), null);
   }
 
   async listAchievedByUserid(userid: string | number, locale = 'en'): Promise<AchievementResponseRow[]> {

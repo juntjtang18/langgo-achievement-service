@@ -47,7 +47,6 @@ DATABASE_SSL="${DATABASE_SSL:-false}"
 EVENT_BUS_DRIVER="${EVENT_BUS_DRIVER:-postgres}"
 EVENT_BUS_CHANNEL_PREFIX="${EVENT_BUS_CHANNEL_PREFIX:-event_bus}"
 VERIFY_USER_ID="${VERIFY_USER_ID:-8}"
-VERIFY_USERNAME="${VERIFY_USERNAME:-vivian}"
 VERIFY_LOCALE="${VERIFY_LOCALE:-en}"
 
 require_command docker
@@ -187,7 +186,6 @@ echo "Verifying achievement endpoint"
 ACHIEVEMENT_RESPONSE=$(curl -fsS \
   -H "x-internal-key: ${ACHIEVEMENT_INTERNAL_KEY}" \
   -H "x-user-id: ${VERIFY_USER_ID}" \
-  -H "x-username: ${VERIFY_USERNAME}" \
   "${SERVICE_URL}/achievements-not-achieved?locale=${VERIFY_LOCALE}")
 echo "achievements-not-achieved response: ${ACHIEVEMENT_RESPONSE}"
 ACHIEVEMENT_RESPONSE="${ACHIEVEMENT_RESPONSE}" node <<'NODE'
