@@ -2,12 +2,25 @@
 
 set -euo pipefail
 
-if [ -f .env ]; then
-  set -a
-  # shellcheck disable=SC1091
-  source .env
-  set +a
-fi
+load_dotenv_defaults() {
+  if [ ! -f .env ]; then
+    return
+  fi
+
+  while IFS= read -r line; do
+    [[ -z "${line}" || "${line}" =~ ^[[:space:]]*# ]] && continue
+    local key="${line%%=*}"
+    local value="${line#*=}"
+    key="${key#"${key%%[![:space:]]*}"}"
+    key="${key%"${key##*[![:space:]]}"}"
+    [[ -z "${key}" || ! "${key}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] && continue
+    if [ -z "${!key+x}" ]; then
+      export "${key}=${value}"
+    fi
+  done < .env
+}
+
+load_dotenv_defaults
 
 require_env() {
   local name="$1"
