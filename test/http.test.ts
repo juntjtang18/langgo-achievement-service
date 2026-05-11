@@ -25,10 +25,10 @@ function createTestApp() {
       ],
     } as any,
     adminRepository: {
-      listAchievements: async () => [],
-      listTranslations: async () => [],
-      listEventLists: async () => [],
-      listUserAchievements: async () => [],
+      listAchievements: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
+      listTranslations: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
+      listEventLists: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
+      listUserAchievements: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
     } as any,
     adminAuthService: {
       getLoginUrl: () => 'https://example.com/admin/auth/login',
@@ -107,12 +107,15 @@ describe('http routes', () => {
     const app = createTestApp();
 
     const response = await request(app)
-      .get('/admin/events')
+      .get('/admin/achievements?page=2&pageSize=10&where=points%20%3E%3D%201')
       .set('Cookie', 'achievement_admin_session=valid-session');
 
     expect(response.status).toBe(200);
-    expect(response.text).toContain('Manual Event Emit');
+    expect(response.text).toContain('Achievements');
+    expect(response.text).toContain('name="where"');
+    expect(response.text).toContain('name="pageSize"');
+    expect(response.text).toContain('points &gt;= 1');
+    expect(response.text).not.toContain('Manual Event Emit</h2>');
     expect(response.text).not.toContain('User Achievements</h2>');
-    expect(response.text).not.toContain('Translations</h2>');
   });
 });

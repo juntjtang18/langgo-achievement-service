@@ -95,6 +95,20 @@ The admin login form authenticates against `STRAPI_ADMIN_URL`, then gives access
 
 The admin page also includes a manual event publisher that sends JSON payloads through the configured event bus so you can test the live achievement logic.
 
+Admin table pages use Bootstrap styling and are route-based:
+
+- `/admin/events`
+- `/admin/achievements`
+- `/admin/translations`
+- `/admin/event-lists`
+- `/admin/user-achievements`
+
+Each CRUD table page supports:
+
+- pagination with `page` and `pageSize`
+- a raw `where` filter input appended after `WHERE (...)`
+- DB-field-exact column names so they can be referenced directly in the `where` clause
+
 Example request:
 
 ```bash

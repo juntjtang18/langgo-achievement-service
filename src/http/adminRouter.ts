@@ -6,6 +6,8 @@ import {
   AdminRepository,
   type AdminAchievementRow,
   type AdminEventListRow,
+  type AdminPageQuery,
+  type AdminPageResult,
   type AdminTranslationRow,
   type AdminUserAchievementRow,
 } from '../repositories/adminRepository';
@@ -14,6 +16,7 @@ import { EventSubscriberService } from '../services/eventSubscriberService';
 
 const SESSION_COOKIE = 'achievement_admin_session';
 const DEFAULT_ADMIN_PATH = '/admin/events';
+const DEFAULT_PAGE_SIZE = 20;
 
 type AdminSection = 'events' | 'achievements' | 'translations' | 'event-lists' | 'user-achievements';
 
@@ -22,6 +25,12 @@ interface AdminLayoutOptions {
   error?: string | null;
   userEmail?: string | null;
   activeSection?: AdminSection;
+}
+
+interface PageState {
+  page: number;
+  pageSize: number;
+  whereClause: string;
 }
 
 function escapeHtml(value: unknown): string {
@@ -44,9 +53,7 @@ function parseCookies(req: Request): Record<string, string> {
     if (index === -1) {
       return cookies;
     }
-    const key = pair.slice(0, index).trim();
-    const value = pair.slice(index + 1).trim();
-    cookies[key] = decodeURIComponent(value);
+    cookies[pair.slice(0, index).trim()] = decodeURIComponent(pair.slice(index + 1).trim());
     return cookies;
   }, {});
 }
@@ -59,10 +66,14 @@ function clearSessionCookie(res: Response): void {
   res.setHeader('Set-Cookie', `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
 }
 
+function readSessionId(req: Request): string | null {
+  return parseCookies(req)[SESSION_COOKIE] ?? null;
+}
+
 function redirectWithNotice(res: Response, path: string, type: 'notice' | 'error', message: string): void {
   const url = new URL(`http://local${path}`);
   url.searchParams.set(type, message);
-  res.redirect(url.pathname + url.search + url.hash);
+  res.redirect(url.pathname + url.search);
 }
 
 function readRequiredString(body: unknown, field: string): string {
@@ -83,8 +94,7 @@ function readOptionalString(body: unknown, field: string): string | null {
 }
 
 function readRequiredNumber(body: unknown, field: string): number {
-  const raw = readRequiredString(body, field);
-  const value = Number(raw);
+  const value = Number(readRequiredString(body, field));
   if (!Number.isFinite(value)) {
     throw new Error(`Invalid number for "${field}".`);
   }
@@ -96,45 +106,96 @@ function readBoolean(body: unknown, field: string): boolean {
   return value === 'true' || value === 'on' || value === true;
 }
 
-function readSessionId(req: Request): string | null {
-  return parseCookies(req)[SESSION_COOKIE] ?? null;
+function readPageState(req: Request): PageState {
+  const page = Number(typeof req.query.page === 'string' ? req.query.page : '1');
+  const pageSize = Number(typeof req.query.pageSize === 'string' ? req.query.pageSize : String(DEFAULT_PAGE_SIZE));
+  return {
+    page: Number.isFinite(page) && page > 0 ? Math.floor(page) : 1,
+    pageSize: Number.isFinite(pageSize) && pageSize > 0 ? Math.floor(pageSize) : DEFAULT_PAGE_SIZE,
+    whereClause: typeof req.query.where === 'string' ? req.query.where : '',
+  };
+}
+
+function pageQuery(state: PageState): AdminPageQuery {
+  return {
+    page: state.page,
+    pageSize: state.pageSize,
+    whereClause: state.whereClause.trim() === '' ? null : state.whereClause.trim(),
+  };
+}
+
+function buildSectionUrl(path: string, state: PageState, overrides: Partial<PageState> = {}): string {
+  const url = new URL(`http://local${path}`);
+  const next = {
+    page: overrides.page ?? state.page,
+    pageSize: overrides.pageSize ?? state.pageSize,
+    whereClause: overrides.whereClause ?? state.whereClause,
+  };
+  url.searchParams.set('page', String(next.page));
+  url.searchParams.set('pageSize', String(next.pageSize));
+  if (next.whereClause.trim() !== '') {
+    url.searchParams.set('where', next.whereClause);
+  }
+  return url.pathname + url.search;
+}
+
+function pagination(total: number, state: PageState, path: string): string {
+  const totalPages = Math.max(1, Math.ceil(total / state.pageSize));
+  const current = Math.min(state.page, totalPages);
+  const items: string[] = [];
+  const pages = new Set<number>([1, totalPages, current - 1, current, current + 1].filter((value) => value >= 1 && value <= totalPages));
+  const ordered = Array.from(pages).sort((left, right) => left - right);
+
+  const link = (page: number, label: string, disabled = false, active = false) =>
+    `<li class="page-item${disabled ? ' disabled' : ''}${active ? ' active' : ''}">
+      <a class="page-link" href="${disabled ? '#' : escapeHtml(buildSectionUrl(path, state, { page }))}">${escapeHtml(label)}</a>
+    </li>`;
+
+  items.push(link(Math.max(1, current - 1), 'Previous', current === 1));
+  let previous = 0;
+  for (const page of ordered) {
+    if (previous !== 0 && page - previous > 1) {
+      items.push('<li class="page-item disabled"><span class="page-link">…</span></li>');
+    }
+    items.push(link(page, String(page), false, page === current));
+    previous = page;
+  }
+  items.push(link(Math.min(totalPages, current + 1), 'Next', current === totalPages));
+
+  return `<nav aria-label="Pagination"><ul class="pagination pagination-sm mb-0">${items.join('')}</ul></nav>`;
 }
 
 function navLink(section: AdminSection, href: string, label: string, activeSection?: AdminSection): string {
-  const activeClass = activeSection === section ? 'active' : '';
-  return `<a class="${activeClass}" href="${href}" aria-current="${activeSection === section ? 'page' : 'false'}">${escapeHtml(label)}</a>`;
+  return `<a class="nav-link rounded px-3 py-2 ${activeSection === section ? 'active bg-primary text-white' : 'text-light'}" href="${href}" aria-current="${activeSection === section ? 'page' : 'false'}">${escapeHtml(label)}</a>`;
 }
 
-function iconButton(options: {
-  label: string;
-  symbol: string;
-  type?: 'submit' | 'button';
-  tone?: 'default' | 'secondary' | 'danger';
-  formaction?: string;
-}): string {
-  const toneClass = options.tone && options.tone !== 'default' ? ` ${options.tone}` : '';
+function iconButton(options: { label: string; icon: string; tone?: 'primary' | 'secondary' | 'danger'; formaction?: string; type?: 'submit' | 'button' }): string {
+  const toneClass =
+    options.tone === 'danger' ? 'btn-outline-danger' :
+    options.tone === 'secondary' ? 'btn-outline-secondary' :
+    'btn-primary';
   const formaction = options.formaction ? ` formaction="${escapeHtml(options.formaction)}"` : '';
-  return `<button class="icon-button${toneClass}" type="${options.type ?? 'submit'}" title="${escapeHtml(options.label)}" aria-label="${escapeHtml(options.label)}"${formaction}>${escapeHtml(options.symbol)}</button>`;
+  return `<button type="${options.type ?? 'submit'}" class="btn btn-sm ${toneClass}" title="${escapeHtml(options.label)}" aria-label="${escapeHtml(options.label)}"${formaction}><i class="bi bi-${escapeHtml(options.icon)}"></i></button>`;
 }
 
 function renderLayout(title: string, content: string, options: AdminLayoutOptions = {}): string {
-  const notice = options.notice ? `<div class="banner success">${escapeHtml(options.notice)}</div>` : '';
-  const error = options.error ? `<div class="banner error">${escapeHtml(options.error)}</div>` : '';
-  const userEmail = options.userEmail ? `<div class="user">${escapeHtml(options.userEmail)}</div>` : '';
-  const sidebar = options.activeSection
-    ? `<aside class="sidebar">
-        <div class="sidebar-inner">
-          <div class="brand">Achievement Admin<small>Standalone service control plane</small></div>
-          <nav class="nav">
-            ${navLink('events', '/admin/events', 'Manual Event Emit', options.activeSection)}
-            ${navLink('achievements', '/admin/achievements', 'Achievements', options.activeSection)}
-            ${navLink('translations', '/admin/translations', 'Translations', options.activeSection)}
-            ${navLink('event-lists', '/admin/event-lists', 'Event Lists', options.activeSection)}
-            ${navLink('user-achievements', '/admin/user-achievements', 'User Achievements', options.activeSection)}
-          </nav>
-        </div>
-      </aside>`
-    : '';
+  const notice = options.notice ? `<div class="alert alert-success" role="alert">${escapeHtml(options.notice)}</div>` : '';
+  const error = options.error ? `<div class="alert alert-danger" role="alert">${escapeHtml(options.error)}</div>` : '';
+  const userEmail = options.userEmail ? `<div class="text-secondary small mt-1">${escapeHtml(options.userEmail)}</div>` : '';
+  const sidebar = options.activeSection ? `
+    <aside class="position-fixed top-0 start-0 vh-100 text-bg-dark border-end" style="width: 248px;">
+      <div class="p-3">
+        <div class="fw-bold fs-5 text-white">Achievement Admin</div>
+        <div class="text-secondary small mb-4">Standalone service control plane</div>
+        <nav class="nav nav-pills flex-column gap-2">
+          ${navLink('events', '/admin/events', 'Manual Event Emit', options.activeSection)}
+          ${navLink('achievements', '/admin/achievements', 'Achievements', options.activeSection)}
+          ${navLink('translations', '/admin/translations', 'Translations', options.activeSection)}
+          ${navLink('event-lists', '/admin/event-lists', 'Event Lists', options.activeSection)}
+          ${navLink('user-achievements', '/admin/user-achievements', 'User Achievements', options.activeSection)}
+        </nav>
+      </div>
+    </aside>` : '';
 
   return `<!doctype html>
 <html lang="en">
@@ -142,89 +203,26 @@ function renderLayout(title: string, content: string, options: AdminLayoutOption
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${escapeHtml(title)}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-      :root {
-        --bg: #f4f6fb;
-        --surface: #ffffff;
-        --surface-2: #f9fbff;
-        --line: #d8dfeb;
-        --line-strong: #c4ccda;
-        --text: #18212f;
-        --muted: #677489;
-        --accent: #2563eb;
-        --accent-ghost: #e8f0ff;
-        --danger: #b42318;
-        --danger-ghost: #fff1f0;
-        --success: #157347;
-        --success-ghost: #e9f7ef;
-        --sidebar: #0f172a;
-        --sidebar-text: #d6def0;
-      }
-      * { box-sizing: border-box; }
-      body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: var(--text); background: linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%); }
-      a { color: inherit; }
-      .app-shell { min-height: 100vh; padding-left: 248px; }
-      .sidebar { position: fixed; inset: 0 auto 0 0; width: 248px; background: linear-gradient(180deg, #0f172a 0%, #111b31 100%); color: var(--sidebar-text); border-right: 1px solid rgba(255,255,255,0.06); }
-      .sidebar-inner { padding: 24px 16px; }
-      .brand { font-weight: 700; font-size: 19px; color: #f8fafc; margin-bottom: 22px; }
-      .brand small { display: block; margin-top: 6px; color: #94a3b8; font-size: 13px; font-weight: 500; }
-      .nav { display: grid; gap: 8px; }
-      .nav a { text-decoration: none; padding: 12px 14px; border-radius: 12px; color: var(--sidebar-text); font-weight: 600; transition: background 120ms ease, color 120ms ease; }
-      .nav a:hover { background: rgba(255,255,255,0.08); color: #fff; }
-      .nav a.active { background: linear-gradient(180deg, rgba(37,99,235,0.32), rgba(37,99,235,0.18)); color: #fff; box-shadow: inset 0 0 0 1px rgba(147,197,253,0.25); }
-      .main { padding: 24px; }
-      .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
-      .topbar h1 { margin: 0; font-size: 28px; letter-spacing: -0.02em; }
-      .user { color: var(--muted); font-size: 14px; margin-top: 6px; }
-      .logout { text-decoration: none; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255,255,255,0.7); box-shadow: 0 8px 22px rgba(15,23,42,0.06); }
-      .content-card { background: rgba(255,255,255,0.86); backdrop-filter: blur(10px); border: 1px solid var(--line); border-radius: 18px; padding: 18px; box-shadow: 0 14px 38px rgba(15,23,42,0.06); overflow: auto; }
-      .section-header { display: flex; align-items: start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
-      .section-header h2 { margin: 0 0 6px; font-size: 21px; }
-      .subtle { color: var(--muted); font-size: 13px; margin: 0; }
-      .banner { padding: 12px 14px; border-radius: 14px; margin-bottom: 18px; font-size: 14px; }
-      .banner.success { background: var(--success-ghost); color: var(--success); border: 1px solid #b8e0c5; }
-      .banner.error { background: #fff0ee; color: var(--danger); border: 1px solid #f4c7c3; }
-      .form-grid { display: grid; grid-template-columns: repeat(4, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
-      .form-grid.wide { grid-template-columns: repeat(2, minmax(220px, 1fr)); }
-      .field { display: flex; flex-direction: column; gap: 6px; }
-      .field label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
-      input, textarea, button { font: inherit; }
-      input, textarea { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; background: #fff; color: var(--text); }
-      textarea { min-height: 110px; resize: vertical; }
-      .toolbar { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; }
-      .toolbar-actions, .cell-actions { display: flex; gap: 8px; align-items: center; }
-      .icon-button { width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 10px; background: var(--accent); color: #fff; cursor: pointer; font-size: 16px; font-weight: 700; }
-      .icon-button.secondary { background: #eef2f7; color: var(--text); border-color: var(--line); }
-      .icon-button.danger { background: var(--danger-ghost); color: var(--danger); border-color: #f4c7c3; }
-      table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 920px; }
-      th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
-      th { position: sticky; top: 0; background: var(--surface); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); z-index: 1; }
-      tbody tr:hover { background: rgba(37,99,235,0.03); }
-      .table-input { min-width: 110px; }
-      .checkbox-cell { width: 48px; text-align: center; }
-      .login-shell { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
-      .login-card { width: min(420px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 24px; box-shadow: 0 18px 50px rgba(16,24,40,0.12); }
-      .login-card h1 { margin-top: 0; margin-bottom: 10px; }
-      .login-card p { color: var(--muted); }
-      .login-card .field { margin-bottom: 14px; }
-      .tag { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #e8f0ff; color: var(--accent); font-size: 12px; font-weight: 600; }
-      .spacer { flex: 1; }
-      @media (max-width: 1100px) {
-        .app-shell { padding-left: 0; }
-        .sidebar { position: static; width: auto; border-right: 0; }
-        .main { padding-top: 0; }
-        .form-grid, .form-grid.wide { grid-template-columns: repeat(2, minmax(150px, 1fr)); }
-      }
-      @media (max-width: 720px) {
-        .main { padding: 16px; }
-        .topbar { flex-direction: column; align-items: flex-start; }
-        .form-grid, .form-grid.wide { grid-template-columns: 1fr; }
-        .toolbar { align-items: flex-start; }
+      body { background: #f6f8fb; }
+      .admin-main { margin-left: ${options.activeSection ? '248px' : '0'}; min-height: 100vh; }
+      .table-responsive { overflow: auto; }
+      th { white-space: nowrap; }
+      .sticky-header th { position: sticky; top: 0; background: #fff; z-index: 1; }
+      .where-help code { white-space: nowrap; }
+      @media (max-width: 992px) {
+        .admin-main { margin-left: 0; }
+        aside.position-fixed { position: static !important; width: auto !important; height: auto !important; }
       }
     </style>
   </head>
   <body>
-    ${options.activeSection ? `<div class="app-shell">${sidebar}<main class="main">${content.replace('<!--NOTICE-->', `${notice}${error}`).replace('<!--USER-->', userEmail)}</main></div>` : content.replace('<!--NOTICE-->', `${notice}${error}`).replace('<!--USER-->', userEmail)}
+    ${sidebar}
+    <main class="admin-main p-4">
+      ${content.replace('<!--NOTICE-->', notice + error).replace('<!--USER-->', userEmail)}
+    </main>
   </body>
 </html>`;
 }
@@ -232,28 +230,33 @@ function renderLayout(title: string, content: string, options: AdminLayoutOption
 function renderLoginPage(strapiLoginUrl: string, notice?: string | null, error?: string | null): string {
   return renderLayout(
     'Achievement Admin Login',
-    `<main class="login-shell">
-      <section class="login-card">
-        <span class="tag">Strapi-backed auth</span>
-        <h1>Achievement Admin</h1>
-        <p>Authenticate with the Strapi admin account at <a href="${escapeHtml(strapiLoginUrl)}" target="_blank" rel="noreferrer">${escapeHtml(strapiLoginUrl)}</a>.</p>
-        <!--NOTICE-->
-        <form method="post" action="/admin/login">
-          <div class="field">
-            <label>Email</label>
-            <input name="email" type="email" required />
+    `<div class="container py-5">
+      <div class="row justify-content-center">
+        <div class="col-12 col-md-6 col-lg-5">
+          <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+              <span class="badge text-bg-primary-subtle text-primary-emphasis mb-3">Strapi-backed auth</span>
+              <h1 class="h3 mb-2">Achievement Admin</h1>
+              <p class="text-secondary">Authenticate with the Strapi admin account at <a href="${escapeHtml(strapiLoginUrl)}" target="_blank" rel="noreferrer">${escapeHtml(strapiLoginUrl)}</a>.</p>
+              <!--NOTICE-->
+              <form method="post" action="/admin/login" class="vstack gap-3">
+                <div>
+                  <label class="form-label">Email</label>
+                  <input class="form-control" name="email" type="email" required />
+                </div>
+                <div>
+                  <label class="form-label">Password</label>
+                  <input class="form-control" name="password" type="password" required />
+                </div>
+                <div class="d-flex justify-content-end">
+                  ${iconButton({ label: 'Sign in', icon: 'box-arrow-in-right' })}
+                </div>
+              </form>
+            </div>
           </div>
-          <div class="field">
-            <label>Password</label>
-            <input name="password" type="password" required />
-          </div>
-          <div class="toolbar">
-            <span class="subtle">Uses the Strapi admin login endpoint.</span>
-            ${iconButton({ label: 'Sign in', symbol: '→' })}
-          </div>
-        </form>
-      </section>
-    </main>`,
+        </div>
+      </div>
+    </div>`,
     { notice, error }
   );
 }
@@ -261,69 +264,90 @@ function renderLoginPage(strapiLoginUrl: string, notice?: string | null, error?:
 function renderSectionShell(title: string, description: string, body: string, options: AdminLayoutOptions): string {
   return renderLayout(
     title,
-    `<div class="topbar">
+    `<div class="d-flex justify-content-between align-items-start gap-3 mb-4">
       <div>
-        <h1>${escapeHtml(title)}</h1>
+        <h1 class="h3 mb-0">${escapeHtml(title)}</h1>
         <!--USER-->
       </div>
-      <a class="logout" href="/admin/logout">Logout</a>
+      <a class="btn btn-outline-secondary btn-sm" href="/admin/logout">Logout</a>
     </div>
     <!--NOTICE-->
-    <section class="content-card">
-      <div class="section-header">
-        <div>
-          <h2>${escapeHtml(title)}</h2>
-          <p class="subtle">${escapeHtml(description)}</p>
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+        <div class="mb-3">
+          <h2 class="h5 mb-1">${escapeHtml(title)}</h2>
+          <p class="text-secondary mb-0">${escapeHtml(description)}</p>
         </div>
+        ${body}
       </div>
-      ${body}
-    </section>`,
+    </div>`,
     options
   );
+}
+
+function renderFilterToolbar(path: string, state: PageState, total: number): string {
+  return `
+    <form method="get" action="${path}" class="row g-2 align-items-end mb-3">
+      <div class="col-12 col-lg-7">
+        <label class="form-label">where</label>
+        <input class="form-control form-control-sm font-monospace" name="where" value="${escapeHtml(state.whereClause)}" placeholder="e.g. event_name = 'flashcard.create' AND points >= 1" />
+        <div class="form-text where-help">Raw SQL sub-clause appended after <code>WHERE</code>. Column names must match DB fields exactly.</div>
+      </div>
+      <div class="col-6 col-lg-2">
+        <label class="form-label">pageSize</label>
+        <input class="form-control form-control-sm" name="pageSize" type="number" min="1" max="100" value="${state.pageSize}" />
+      </div>
+      <div class="col-6 col-lg-3">
+        <input type="hidden" name="page" value="1" />
+        <div class="d-flex gap-2">
+          ${iconButton({ label: 'Apply filter', icon: 'search' })}
+          <a class="btn btn-sm btn-outline-secondary" href="${path}"><i class="bi bi-arrow-clockwise"></i></a>
+        </div>
+      </div>
+    </form>
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="text-secondary small">total rows: ${total}</div>
+      ${pagination(total, state, path)}
+    </div>`;
 }
 
 function renderEventsPage(options: AdminLayoutOptions): string {
   return renderSectionShell(
     'Manual Event Emit',
     'Publish an event into the configured event bus to exercise the live achievement logic.',
-    `<form method="post" action="/admin/events/emit">
-      <div class="form-grid wide">
-        <div class="field">
-          <label>Topic</label>
-          <input name="topic" placeholder="flashcard.review" required />
-        </div>
-        <div class="field">
-          <label>Payload JSON</label>
-          <textarea name="payload_json" placeholder='{"userid":"8","username":"vivian"}' required></textarea>
-        </div>
+    `<form method="post" action="/admin/events/emit" class="row g-3">
+      <div class="col-12 col-lg-4">
+        <label class="form-label">topic</label>
+        <input class="form-control form-control-sm font-monospace" name="topic" placeholder="flashcard.review" required />
       </div>
-      <div class="toolbar">
-        <span class="subtle">The payload is published exactly as entered.</span>
-        <div class="toolbar-actions">
-          ${iconButton({ label: 'Refresh subscriptions', symbol: '↻', tone: 'secondary', formaction: '/admin/subscriptions/refresh' })}
-          ${iconButton({ label: 'Emit event', symbol: '▶' })}
-        </div>
+      <div class="col-12 col-lg-8">
+        <label class="form-label">payload_json</label>
+        <textarea class="form-control form-control-sm font-monospace" name="payload_json" rows="6" placeholder='{"userid":"8","username":"vivian"}' required></textarea>
+      </div>
+      <div class="col-12 d-flex justify-content-end gap-2">
+        ${iconButton({ label: 'Refresh subscriptions', icon: 'arrow-clockwise', tone: 'secondary', formaction: '/admin/subscriptions/refresh' })}
+        ${iconButton({ label: 'Emit event', icon: 'send-fill' })}
       </div>
     </form>`,
     options
   );
 }
 
-function renderAchievementsPage(rows: AdminAchievementRow[], options: AdminLayoutOptions): string {
-  const bodyRows = rows.map((row) => `
+function renderAchievementsPage(result: AdminPageResult<AdminAchievementRow>, state: PageState, options: AdminLayoutOptions): string {
+  const rows = result.rows.map((row) => `
     <tr>
       <form method="post" action="/admin/achievements/${row.id}/update">
         <td>${row.id}</td>
-        <td><input class="table-input" name="code" value="${escapeHtml(row.code)}" /></td>
-        <td><input class="table-input" name="event_name" value="${escapeHtml(row.event_name)}" /></td>
-        <td><input class="table-input" name="icon_name" value="${escapeHtml(row.icon_name ?? '')}" /></td>
-        <td><input class="table-input" name="points" type="number" value="${row.points}" /></td>
-        <td><input class="table-input" name="goal" type="number" value="${row.goal}" /></td>
-        <td class="cell-actions">
-          ${iconButton({ label: 'Save achievement', symbol: '✓' })}
+        <td><input class="form-control form-control-sm font-monospace" name="code" value="${escapeHtml(row.code)}" /></td>
+        <td><input class="form-control form-control-sm font-monospace" name="event_name" value="${escapeHtml(row.event_name)}" /></td>
+        <td><input class="form-control form-control-sm font-monospace" name="icon_name" value="${escapeHtml(row.icon_name ?? '')}" /></td>
+        <td><input class="form-control form-control-sm font-monospace" name="points" type="number" value="${row.points}" /></td>
+        <td><input class="form-control form-control-sm font-monospace" name="goal" type="number" value="${row.goal}" /></td>
+        <td class="text-nowrap d-flex gap-2">
+          ${iconButton({ label: 'Save achievement', icon: 'floppy' })}
       </form>
       <form method="post" action="/admin/achievements/${row.id}/delete">
-          ${iconButton({ label: 'Delete achievement', symbol: '✕', tone: 'danger' })}
+          ${iconButton({ label: 'Delete achievement', icon: 'trash', tone: 'danger' })}
       </form>
         </td>
     </tr>`).join('');
@@ -331,145 +355,132 @@ function renderAchievementsPage(rows: AdminAchievementRow[], options: AdminLayou
   return renderSectionShell(
     'Achievements',
     'Manage achievement definitions stored in as_achievements.',
-    `<form method="post" action="/admin/achievements/create">
-      <div class="toolbar">
-        <span class="subtle">Create or edit the event-to-goal definitions used by the service.</span>
-        <div class="toolbar-actions">
-          ${iconButton({ label: 'Create achievement', symbol: '+' })}
-        </div>
-      </div>
-      <div class="form-grid">
-        <div class="field"><label>Code</label><input name="code" required /></div>
-        <div class="field"><label>Event Name</label><input name="event_name" required /></div>
-        <div class="field"><label>Icon Name</label><input name="icon_name" /></div>
-        <div class="field"><label>Points</label><input name="points" type="number" value="1" required /></div>
-        <div class="field"><label>Goal</label><input name="goal" type="number" value="1" required /></div>
-      </div>
+    `<form method="post" action="/admin/achievements/create" class="row g-2 mb-3">
+      <div class="col-12 col-md-4 col-xl-3"><label class="form-label">code</label><input class="form-control form-control-sm font-monospace" name="code" required /></div>
+      <div class="col-12 col-md-4 col-xl-3"><label class="form-label">event_name</label><input class="form-control form-control-sm font-monospace" name="event_name" required /></div>
+      <div class="col-12 col-md-4 col-xl-2"><label class="form-label">icon_name</label><input class="form-control form-control-sm font-monospace" name="icon_name" /></div>
+      <div class="col-6 col-md-2 col-xl-2"><label class="form-label">points</label><input class="form-control form-control-sm font-monospace" name="points" type="number" value="1" required /></div>
+      <div class="col-6 col-md-2 col-xl-2"><label class="form-label">goal</label><input class="form-control form-control-sm font-monospace" name="goal" type="number" value="1" required /></div>
+      <div class="col-12 d-flex justify-content-end">${iconButton({ label: 'Create achievement', icon: 'plus-lg' })}</div>
     </form>
-    <table>
-      <thead><tr><th>ID</th><th>Code</th><th>Event</th><th>Icon</th><th>Points</th><th>Goal</th><th>Actions</th></tr></thead>
-      <tbody>${bodyRows}</tbody>
-    </table>`,
+    ${renderFilterToolbar('/admin/achievements', state, result.total)}
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead class="sticky-header"><tr><th>id</th><th>code</th><th>event_name</th><th>icon_name</th><th>points</th><th>goal</th><th>actions</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`,
     options
   );
 }
 
-function renderTranslationsPage(rows: AdminTranslationRow[], options: AdminLayoutOptions): string {
-  const bodyRows = rows.map((row) => `
+function renderTranslationsPage(result: AdminPageResult<AdminTranslationRow>, state: PageState, options: AdminLayoutOptions): string {
+  const rows = result.rows.map((row) => `
     <tr>
       <form method="post" action="/admin/translations/${row.id}/update">
         <td>${row.id}</td>
-        <td><input class="table-input" name="achievement_id" type="number" value="${row.achievement_id}" /></td>
-        <td><input class="table-input" name="locale" value="${escapeHtml(row.locale)}" /></td>
-        <td><input class="table-input" name="title" value="${escapeHtml(row.title ?? '')}" /></td>
-        <td><textarea name="description">${escapeHtml(row.description ?? '')}</textarea></td>
-        <td class="cell-actions">
-          ${iconButton({ label: 'Save translation', symbol: '✓' })}
+        <td><input class="form-control form-control-sm font-monospace" name="achievement_id" type="number" value="${row.achievement_id}" /></td>
+        <td><input class="form-control form-control-sm font-monospace" name="locale" value="${escapeHtml(row.locale)}" /></td>
+        <td><input class="form-control form-control-sm font-monospace" name="title" value="${escapeHtml(row.title ?? '')}" /></td>
+        <td><input class="form-control form-control-sm font-monospace" name="description" value="${escapeHtml(row.description ?? '')}" /></td>
+        <td class="text-nowrap d-flex gap-2">
+          ${iconButton({ label: 'Save translation', icon: 'floppy' })}
       </form>
       <form method="post" action="/admin/translations/${row.id}/delete">
-          ${iconButton({ label: 'Delete translation', symbol: '✕', tone: 'danger' })}
+          ${iconButton({ label: 'Delete translation', icon: 'trash', tone: 'danger' })}
       </form>
         </td>
     </tr>`).join('');
 
   return renderSectionShell(
     'Translations',
-    'Manage localized title and description rows in as_achievement_translations.',
-    `<form method="post" action="/admin/translations/create">
-      <div class="toolbar">
-        <span class="subtle">Locale fallback behavior is applied at read time by the API.</span>
-        <div class="toolbar-actions">
-          ${iconButton({ label: 'Create translation', symbol: '+' })}
-        </div>
-      </div>
-      <div class="form-grid">
-        <div class="field"><label>Achievement ID</label><input name="achievement_id" type="number" required /></div>
-        <div class="field"><label>Locale</label><input name="locale" value="en" required /></div>
-        <div class="field"><label>Title</label><input name="title" /></div>
-        <div class="field"><label>Description</label><input name="description" /></div>
-      </div>
+    'Manage localized rows stored in as_achievement_translations.',
+    `<form method="post" action="/admin/translations/create" class="row g-2 mb-3">
+      <div class="col-12 col-md-3"><label class="form-label">achievement_id</label><input class="form-control form-control-sm font-monospace" name="achievement_id" type="number" required /></div>
+      <div class="col-12 col-md-2"><label class="form-label">locale</label><input class="form-control form-control-sm font-monospace" name="locale" value="en" required /></div>
+      <div class="col-12 col-md-3"><label class="form-label">title</label><input class="form-control form-control-sm font-monospace" name="title" /></div>
+      <div class="col-12 col-md-4"><label class="form-label">description</label><input class="form-control form-control-sm font-monospace" name="description" /></div>
+      <div class="col-12 d-flex justify-content-end">${iconButton({ label: 'Create translation', icon: 'plus-lg' })}</div>
     </form>
-    <table>
-      <thead><tr><th>ID</th><th>Achievement ID</th><th>Locale</th><th>Title</th><th>Description</th><th>Actions</th></tr></thead>
-      <tbody>${bodyRows}</tbody>
-    </table>`,
+    ${renderFilterToolbar('/admin/translations', state, result.total)}
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead class="sticky-header"><tr><th>id</th><th>achievement_id</th><th>locale</th><th>title</th><th>description</th><th>actions</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`,
     options
   );
 }
 
-function renderEventListsPage(rows: AdminEventListRow[], options: AdminLayoutOptions): string {
-  const bodyRows = rows.map((row) => `
+function renderEventListsPage(result: AdminPageResult<AdminEventListRow>, state: PageState, options: AdminLayoutOptions): string {
+  const rows = result.rows.map((row) => `
     <tr>
       <form method="post" action="/admin/event-lists/${row.id}/update">
         <td>${row.id}</td>
-        <td><input class="table-input" name="event_name" value="${escapeHtml(row.event_name)}" /></td>
-        <td><input class="table-input" name="points" type="number" value="${row.points}" /></td>
-        <td class="cell-actions">
-          ${iconButton({ label: 'Save event list row', symbol: '✓' })}
+        <td><input class="form-control form-control-sm font-monospace" name="event_name" value="${escapeHtml(row.event_name)}" /></td>
+        <td><input class="form-control form-control-sm font-monospace" name="points" type="number" value="${row.points}" /></td>
+        <td class="text-nowrap d-flex gap-2">
+          ${iconButton({ label: 'Save event list row', icon: 'floppy' })}
       </form>
       <form method="post" action="/admin/event-lists/${row.id}/delete">
-          ${iconButton({ label: 'Delete event list row', symbol: '✕', tone: 'danger' })}
+          ${iconButton({ label: 'Delete event list row', icon: 'trash', tone: 'danger' })}
       </form>
         </td>
     </tr>`).join('');
 
   return renderSectionShell(
     'Event Lists',
-    'Manage subscribed event topics in as_event_lists. Changes trigger a subscription refresh.',
-    `<form method="post" action="/admin/event-lists/create">
-      <div class="toolbar">
-        <span class="subtle">Refreshes the live event-bus subscriptions after each change.</span>
-        <div class="toolbar-actions">
-          ${iconButton({ label: 'Refresh subscriptions', symbol: '↻', tone: 'secondary', formaction: '/admin/subscriptions/refresh' })}
-          ${iconButton({ label: 'Create event list row', symbol: '+' })}
-        </div>
-      </div>
-      <div class="form-grid">
-        <div class="field"><label>Event Name</label><input name="event_name" required /></div>
-        <div class="field"><label>Points</label><input name="points" type="number" value="1" required /></div>
+    'Manage subscribed topics stored in as_event_lists.',
+    `<form method="post" action="/admin/event-lists/create" class="row g-2 mb-3">
+      <div class="col-12 col-md-6"><label class="form-label">event_name</label><input class="form-control form-control-sm font-monospace" name="event_name" required /></div>
+      <div class="col-12 col-md-3"><label class="form-label">points</label><input class="form-control form-control-sm font-monospace" name="points" type="number" value="1" required /></div>
+      <div class="col-12 col-md-3 d-flex align-items-end justify-content-end gap-2">
+        ${iconButton({ label: 'Refresh subscriptions', icon: 'arrow-clockwise', tone: 'secondary', formaction: '/admin/subscriptions/refresh' })}
+        ${iconButton({ label: 'Create event list row', icon: 'plus-lg' })}
       </div>
     </form>
-    <table>
-      <thead><tr><th>ID</th><th>Event Name</th><th>Points</th><th>Actions</th></tr></thead>
-      <tbody>${bodyRows}</tbody>
-    </table>`,
+    ${renderFilterToolbar('/admin/event-lists', state, result.total)}
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead class="sticky-header"><tr><th>id</th><th>event_name</th><th>points</th><th>actions</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`,
     options
   );
 }
 
-function renderUserAchievementsPage(rows: AdminUserAchievementRow[], options: AdminLayoutOptions): string {
-  const bodyRows = rows.map((row) => `
+function renderUserAchievementsPage(result: AdminPageResult<AdminUserAchievementRow>, state: PageState, options: AdminLayoutOptions): string {
+  const rows = result.rows.map((row) => `
     <tr>
       <form method="post" action="/admin/user-achievements/${row.id}/update">
         <td>${row.id}</td>
-        <td><input class="table-input" name="userid" value="${escapeHtml(row.userid)}" /></td>
-        <td><input class="table-input" name="username" value="${escapeHtml(row.username ?? '')}" /></td>
-        <td><input class="table-input" name="achievement_id" type="number" value="${row.achievement_id}" /></td>
-        <td><input class="table-input" name="progress" type="number" value="${row.progress}" /></td>
-        <td class="checkbox-cell"><input name="achieved" type="checkbox" ${row.achieved ? 'checked' : ''} /></td>
-        <td><input class="table-input" name="achieved_at" value="${escapeHtml(row.achieved_at ?? '')}" /></td>
-        <td class="cell-actions">
-          ${iconButton({ label: 'Save user achievement', symbol: '✓' })}
+        <td><input class="form-control form-control-sm font-monospace" name="userid" value="${escapeHtml(row.userid)}" /></td>
+        <td><input class="form-control form-control-sm font-monospace" name="username" value="${escapeHtml(row.username ?? '')}" /></td>
+        <td><input class="form-control form-control-sm font-monospace" name="achievement_id" type="number" value="${row.achievement_id}" /></td>
+        <td><input class="form-control form-control-sm font-monospace" name="progress" type="number" value="${row.progress}" /></td>
+        <td><input class="form-check-input" name="achieved" type="checkbox" ${row.achieved ? 'checked' : ''} /></td>
+        <td><input class="form-control form-control-sm font-monospace" name="achieved_at" value="${escapeHtml(row.achieved_at ?? '')}" /></td>
+        <td class="text-nowrap d-flex gap-2">
+          ${iconButton({ label: 'Save user achievement', icon: 'floppy' })}
       </form>
       <form method="post" action="/admin/user-achievements/${row.id}/delete">
-          ${iconButton({ label: 'Delete user achievement', symbol: '✕', tone: 'danger' })}
+          ${iconButton({ label: 'Delete user achievement', icon: 'trash', tone: 'danger' })}
       </form>
         </td>
     </tr>`).join('');
 
   return renderSectionShell(
     'User Achievements',
-    'Latest 200 rows from as_user_achievements. Querying is by userid; username is display metadata only.',
-    `<div class="toolbar">
-      <span class="subtle">This section is table-focused by design and does not create rows directly.</span>
-      <div class="toolbar-actions">
-        <a class="logout" href="/admin/user-achievements" title="Reload page" aria-label="Reload page">↻</a>
-      </div>
-    </div>
-    <table>
-      <thead><tr><th>ID</th><th>User ID</th><th>Username</th><th>Achievement ID</th><th>Progress</th><th>Achieved</th><th>Achieved At</th><th>Actions</th></tr></thead>
-      <tbody>${bodyRows}</tbody>
-    </table>`,
+    'Query and edit rows stored in as_user_achievements.',
+    `${renderFilterToolbar('/admin/user-achievements', state, result.total)}
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead class="sticky-header"><tr><th>id</th><th>userid</th><th>username</th><th>achievement_id</th><th>progress</th><th>achieved</th><th>achieved_at</th><th>actions</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`,
     options
   );
 }
@@ -500,7 +511,6 @@ export function createAdminRouter(deps: AdminRouterDependencies): Router {
       res.redirect(DEFAULT_ADMIN_PATH);
       return;
     }
-
     const notice = typeof req.query.notice === 'string' ? req.query.notice : null;
     const error = typeof req.query.error === 'string' ? req.query.error : null;
     res.type('html').send(renderLoginPage(deps.authService.getLoginUrl(), notice, error));
@@ -515,8 +525,7 @@ export function createAdminRouter(deps: AdminRouterDependencies): Router {
       redirectWithNotice(res, DEFAULT_ADMIN_PATH, 'notice', 'Signed in successfully.');
     } catch (error) {
       deps.logger.error({ err: error }, 'admin login failed');
-      const message = error instanceof Error ? error.message : 'Login failed.';
-      redirectWithNotice(res, '/admin/login', 'error', message);
+      redirectWithNotice(res, '/admin/login', 'error', error instanceof Error ? error.message : 'Login failed.');
     }
   });
 
@@ -526,7 +535,6 @@ export function createAdminRouter(deps: AdminRouterDependencies): Router {
       redirectWithNotice(res, '/admin/login', 'error', 'Please sign in with Strapi admin.');
       return;
     }
-
     res.locals.adminSession = session;
     next();
   });
@@ -546,42 +554,46 @@ export function createAdminRouter(deps: AdminRouterDependencies): Router {
   });
 
   router.get('/achievements', async (req, res) => {
+    const state = readPageState(req);
     try {
-      const rows = await deps.repository.listAchievements();
-      res.type('html').send(renderAchievementsPage(rows, pageOptions(req, res.locals.adminSession.email, 'achievements')));
+      const result = await deps.repository.listAchievements(pageQuery(state));
+      res.type('html').send(renderAchievementsPage(result, state, pageOptions(req, res.locals.adminSession.email, 'achievements')));
     } catch (error) {
       deps.logger.error({ err: error }, 'failed to render achievements admin page');
-      redirectWithNotice(res, '/admin/achievements', 'error', 'Failed to load achievements.');
+      redirectWithNotice(res, buildSectionUrl('/admin/achievements', state), 'error', error instanceof Error ? error.message : 'Failed to load achievements.');
     }
   });
 
   router.get('/translations', async (req, res) => {
+    const state = readPageState(req);
     try {
-      const rows = await deps.repository.listTranslations();
-      res.type('html').send(renderTranslationsPage(rows, pageOptions(req, res.locals.adminSession.email, 'translations')));
+      const result = await deps.repository.listTranslations(pageQuery(state));
+      res.type('html').send(renderTranslationsPage(result, state, pageOptions(req, res.locals.adminSession.email, 'translations')));
     } catch (error) {
       deps.logger.error({ err: error }, 'failed to render translations admin page');
-      redirectWithNotice(res, '/admin/translations', 'error', 'Failed to load translations.');
+      redirectWithNotice(res, buildSectionUrl('/admin/translations', state), 'error', error instanceof Error ? error.message : 'Failed to load translations.');
     }
   });
 
   router.get('/event-lists', async (req, res) => {
+    const state = readPageState(req);
     try {
-      const rows = await deps.repository.listEventLists();
-      res.type('html').send(renderEventListsPage(rows, pageOptions(req, res.locals.adminSession.email, 'event-lists')));
+      const result = await deps.repository.listEventLists(pageQuery(state));
+      res.type('html').send(renderEventListsPage(result, state, pageOptions(req, res.locals.adminSession.email, 'event-lists')));
     } catch (error) {
       deps.logger.error({ err: error }, 'failed to render event lists admin page');
-      redirectWithNotice(res, '/admin/event-lists', 'error', 'Failed to load event lists.');
+      redirectWithNotice(res, buildSectionUrl('/admin/event-lists', state), 'error', error instanceof Error ? error.message : 'Failed to load event lists.');
     }
   });
 
   router.get('/user-achievements', async (req, res) => {
+    const state = readPageState(req);
     try {
-      const rows = await deps.repository.listUserAchievements();
-      res.type('html').send(renderUserAchievementsPage(rows, pageOptions(req, res.locals.adminSession.email, 'user-achievements')));
+      const result = await deps.repository.listUserAchievements(pageQuery(state));
+      res.type('html').send(renderUserAchievementsPage(result, state, pageOptions(req, res.locals.adminSession.email, 'user-achievements')));
     } catch (error) {
       deps.logger.error({ err: error }, 'failed to render user achievements admin page');
-      redirectWithNotice(res, '/admin/user-achievements', 'error', 'Failed to load user achievements.');
+      redirectWithNotice(res, buildSectionUrl('/admin/user-achievements', state), 'error', error instanceof Error ? error.message : 'Failed to load user achievements.');
     }
   });
 
@@ -598,8 +610,7 @@ export function createAdminRouter(deps: AdminRouterDependencies): Router {
   router.post('/events/emit', async (req, res) => {
     try {
       const topic = readRequiredString(req.body, 'topic');
-      const payloadJson = readRequiredString(req.body, 'payload_json');
-      const payload = JSON.parse(payloadJson);
+      const payload = JSON.parse(readRequiredString(req.body, 'payload_json'));
       const ack = await deps.eventBus.publish(topic, payload);
       redirectWithNotice(res, '/admin/events', 'notice', `Event published to ${ack.topic} at ${ack.publishedAt}.`);
     } catch (error) {
@@ -632,18 +643,18 @@ export function createAdminRouter(deps: AdminRouterDependencies): Router {
         points: readRequiredNumber(req.body, 'points'),
         goal: readRequiredNumber(req.body, 'goal'),
       });
-      redirectWithNotice(res, '/admin/achievements', 'notice', 'Achievement updated.');
+      redirectWithNotice(res, req.get('referer') || '/admin/achievements', 'notice', 'Achievement updated.');
     } catch (error) {
-      redirectWithNotice(res, '/admin/achievements', 'error', error instanceof Error ? error.message : 'Failed to update achievement.');
+      redirectWithNotice(res, req.get('referer') || '/admin/achievements', 'error', error instanceof Error ? error.message : 'Failed to update achievement.');
     }
   });
 
   router.post('/achievements/:id/delete', async (req, res) => {
     try {
       await deps.repository.deleteAchievement(Number(req.params.id));
-      redirectWithNotice(res, '/admin/achievements', 'notice', 'Achievement deleted.');
+      redirectWithNotice(res, req.get('referer') || '/admin/achievements', 'notice', 'Achievement deleted.');
     } catch (error) {
-      redirectWithNotice(res, '/admin/achievements', 'error', error instanceof Error ? error.message : 'Failed to delete achievement.');
+      redirectWithNotice(res, req.get('referer') || '/admin/achievements', 'error', error instanceof Error ? error.message : 'Failed to delete achievement.');
     }
   });
 
@@ -669,18 +680,18 @@ export function createAdminRouter(deps: AdminRouterDependencies): Router {
         title: readOptionalString(req.body, 'title'),
         description: readOptionalString(req.body, 'description'),
       });
-      redirectWithNotice(res, '/admin/translations', 'notice', 'Translation updated.');
+      redirectWithNotice(res, req.get('referer') || '/admin/translations', 'notice', 'Translation updated.');
     } catch (error) {
-      redirectWithNotice(res, '/admin/translations', 'error', error instanceof Error ? error.message : 'Failed to update translation.');
+      redirectWithNotice(res, req.get('referer') || '/admin/translations', 'error', error instanceof Error ? error.message : 'Failed to update translation.');
     }
   });
 
   router.post('/translations/:id/delete', async (req, res) => {
     try {
       await deps.repository.deleteTranslation(Number(req.params.id));
-      redirectWithNotice(res, '/admin/translations', 'notice', 'Translation deleted.');
+      redirectWithNotice(res, req.get('referer') || '/admin/translations', 'notice', 'Translation deleted.');
     } catch (error) {
-      redirectWithNotice(res, '/admin/translations', 'error', error instanceof Error ? error.message : 'Failed to delete translation.');
+      redirectWithNotice(res, req.get('referer') || '/admin/translations', 'error', error instanceof Error ? error.message : 'Failed to delete translation.');
     }
   });
 
@@ -704,9 +715,9 @@ export function createAdminRouter(deps: AdminRouterDependencies): Router {
         points: readRequiredNumber(req.body, 'points'),
       });
       await deps.subscriberService.refresh();
-      redirectWithNotice(res, '/admin/event-lists', 'notice', 'Event list row updated and subscriptions refreshed.');
+      redirectWithNotice(res, req.get('referer') || '/admin/event-lists', 'notice', 'Event list row updated and subscriptions refreshed.');
     } catch (error) {
-      redirectWithNotice(res, '/admin/event-lists', 'error', error instanceof Error ? error.message : 'Failed to update event list row.');
+      redirectWithNotice(res, req.get('referer') || '/admin/event-lists', 'error', error instanceof Error ? error.message : 'Failed to update event list row.');
     }
   });
 
@@ -714,9 +725,9 @@ export function createAdminRouter(deps: AdminRouterDependencies): Router {
     try {
       await deps.repository.deleteEventList(Number(req.params.id));
       await deps.subscriberService.refresh();
-      redirectWithNotice(res, '/admin/event-lists', 'notice', 'Event list row deleted and subscriptions refreshed.');
+      redirectWithNotice(res, req.get('referer') || '/admin/event-lists', 'notice', 'Event list row deleted and subscriptions refreshed.');
     } catch (error) {
-      redirectWithNotice(res, '/admin/event-lists', 'error', error instanceof Error ? error.message : 'Failed to delete event list row.');
+      redirectWithNotice(res, req.get('referer') || '/admin/event-lists', 'error', error instanceof Error ? error.message : 'Failed to delete event list row.');
     }
   });
 
@@ -730,18 +741,18 @@ export function createAdminRouter(deps: AdminRouterDependencies): Router {
         achieved: readBoolean(req.body, 'achieved'),
         achieved_at: readOptionalString(req.body, 'achieved_at'),
       });
-      redirectWithNotice(res, '/admin/user-achievements', 'notice', 'User achievement updated.');
+      redirectWithNotice(res, req.get('referer') || '/admin/user-achievements', 'notice', 'User achievement updated.');
     } catch (error) {
-      redirectWithNotice(res, '/admin/user-achievements', 'error', error instanceof Error ? error.message : 'Failed to update user achievement.');
+      redirectWithNotice(res, req.get('referer') || '/admin/user-achievements', 'error', error instanceof Error ? error.message : 'Failed to update user achievement.');
     }
   });
 
   router.post('/user-achievements/:id/delete', async (req, res) => {
     try {
       await deps.repository.deleteUserAchievement(Number(req.params.id));
-      redirectWithNotice(res, '/admin/user-achievements', 'notice', 'User achievement deleted.');
+      redirectWithNotice(res, req.get('referer') || '/admin/user-achievements', 'notice', 'User achievement deleted.');
     } catch (error) {
-      redirectWithNotice(res, '/admin/user-achievements', 'error', error instanceof Error ? error.message : 'Failed to delete user achievement.');
+      redirectWithNotice(res, req.get('referer') || '/admin/user-achievements', 'error', error instanceof Error ? error.message : 'Failed to delete user achievement.');
     }
   });
 

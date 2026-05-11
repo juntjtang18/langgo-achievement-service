@@ -1,4 +1,18 @@
+import type { QueryResultRow } from 'pg';
 import { Database, getSchemaQualifiedTable } from '../db';
+
+export interface AdminPageQuery {
+  page: number;
+  pageSize: number;
+  whereClause: string | null;
+}
+
+export interface AdminPageResult<TRow> {
+  rows: TRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
 
 export interface AdminAchievementRow {
   id: number;
@@ -33,6 +47,23 @@ export interface AdminUserAchievementRow {
   achieved_at: string | null;
 }
 
+function sanitizeWhereClause(whereClause: string | null): string {
+  if (!whereClause) {
+    return '';
+  }
+
+  const trimmed = whereClause.trim();
+  if (trimmed === '') {
+    return '';
+  }
+
+  if (trimmed.includes(';') || trimmed.includes('--') || trimmed.includes('/*') || trimmed.includes('*/')) {
+    throw new Error('Invalid where clause.');
+  }
+
+  return ` WHERE (${trimmed})`;
+}
+
 export class AdminRepository {
   private readonly achievementsTable: string;
   private readonly translationsTable: string;
@@ -46,43 +77,40 @@ export class AdminRepository {
     this.userAchievementsTable = getSchemaQualifiedTable(db.schema, 'as_user_achievements');
   }
 
-  async listAchievements(): Promise<AdminAchievementRow[]> {
-    const result = await this.db.query<AdminAchievementRow>(
-      `SELECT id, code, event_name, icon_name, points, goal
-       FROM ${this.achievementsTable}
-       ORDER BY id ASC`
-    );
-    return result.rows;
+  async listAchievements(query: AdminPageQuery): Promise<AdminPageResult<AdminAchievementRow>> {
+    return this.listPage<AdminAchievementRow>({
+      table: this.achievementsTable,
+      select: 'id, code, event_name, icon_name, points, goal',
+      orderBy: 'id ASC',
+      query,
+    });
   }
 
-  async listTranslations(): Promise<AdminTranslationRow[]> {
-    const result = await this.db.query<AdminTranslationRow>(
-      `SELECT id, achievement_id, locale, title, description
-       FROM ${this.translationsTable}
-       ORDER BY achievement_id ASC, locale ASC, id ASC`
-    );
-    return result.rows;
+  async listTranslations(query: AdminPageQuery): Promise<AdminPageResult<AdminTranslationRow>> {
+    return this.listPage<AdminTranslationRow>({
+      table: this.translationsTable,
+      select: 'id, achievement_id, locale, title, description',
+      orderBy: 'achievement_id ASC, locale ASC, id ASC',
+      query,
+    });
   }
 
-  async listEventLists(): Promise<AdminEventListRow[]> {
-    const result = await this.db.query<AdminEventListRow>(
-      `SELECT id, event_name, points
-       FROM ${this.eventListsTable}
-       ORDER BY id ASC`
-    );
-    return result.rows;
+  async listEventLists(query: AdminPageQuery): Promise<AdminPageResult<AdminEventListRow>> {
+    return this.listPage<AdminEventListRow>({
+      table: this.eventListsTable,
+      select: 'id, event_name, points',
+      orderBy: 'id ASC',
+      query,
+    });
   }
 
-  async listUserAchievements(limit = 200): Promise<AdminUserAchievementRow[]> {
-    const result = await this.db.query<AdminUserAchievementRow>(
-      `SELECT id, userid, username, achievement_id, progress, achieved,
-              achieved_at::text AS achieved_at
-       FROM ${this.userAchievementsTable}
-       ORDER BY updated_at DESC, id DESC
-       LIMIT $1`,
-      [limit]
-    );
-    return result.rows;
+  async listUserAchievements(query: AdminPageQuery): Promise<AdminPageResult<AdminUserAchievementRow>> {
+    return this.listPage<AdminUserAchievementRow>({
+      table: this.userAchievementsTable,
+      select: 'id, userid, username, achievement_id, progress, achieved, achieved_at::text AS achieved_at',
+      orderBy: 'updated_at DESC, id DESC',
+      query,
+    });
   }
 
   async createAchievement(input: Omit<AdminAchievementRow, 'id'>): Promise<void> {
@@ -176,5 +204,38 @@ export class AdminRepository {
 
   async deleteUserAchievement(id: number): Promise<void> {
     await this.db.query(`DELETE FROM ${this.userAchievementsTable} WHERE id = $1`, [id]);
+  }
+
+  private async listPage<TRow extends QueryResultRow>(options: {
+    table: string;
+    select: string;
+    orderBy: string;
+    query: AdminPageQuery;
+  }): Promise<AdminPageResult<TRow>> {
+    const page = Math.max(1, options.query.page);
+    const pageSize = Math.min(100, Math.max(1, options.query.pageSize));
+    const offset = (page - 1) * pageSize;
+    const whereSql = sanitizeWhereClause(options.query.whereClause);
+
+    const [rowsResult, countResult] = await Promise.all([
+      this.db.query<TRow>(
+        `SELECT ${options.select}
+         FROM ${options.table}${whereSql}
+         ORDER BY ${options.orderBy}
+         LIMIT $1 OFFSET $2`,
+        [pageSize, offset]
+      ),
+      this.db.query<{ count: string }>(
+        `SELECT COUNT(*)::text AS count
+         FROM ${options.table}${whereSql}`
+      ),
+    ]);
+
+    return {
+      rows: rowsResult.rows,
+      total: Number(countResult.rows[0]?.count ?? '0'),
+      page,
+      pageSize,
+    };
   }
 }
