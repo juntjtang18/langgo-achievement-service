@@ -7,6 +7,7 @@ const envSchema = z.object({
   PORT: z.string().optional(),
   LOG_LEVEL: z.string().default('info'),
   ACHIEVEMENT_INTERNAL_KEY: z.string().min(1),
+  STRAPI_ADMIN_URL: z.string().default('https://langgo-en-strapi.geniusparentingai.ca/admin/auth/login'),
   ACHIEVEMENT_DB_SCHEMA: z.string().min(1).default('achievement_system'),
   DATABASE_CLIENT: z.string().default('postgres'),
   DATABASE_HOST: z.string().min(1),
@@ -43,6 +44,7 @@ export interface AppConfig {
   port: number;
   logLevel: string;
   internalKey: string;
+  strapiAdminUrl: string;
   schema: string;
   database: {
     host: string;
@@ -70,6 +72,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     port: Number(parsed.PORT ?? '8080'),
     logLevel: parsed.LOG_LEVEL,
     internalKey: parsed.ACHIEVEMENT_INTERNAL_KEY,
+    strapiAdminUrl: parsed.STRAPI_ADMIN_URL,
     schema: parsed.ACHIEVEMENT_DB_SCHEMA,
     database: {
       host: parsed.DATABASE_HOST,

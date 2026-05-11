@@ -61,6 +61,15 @@ export interface EventBusSubscriptionHandle {
 }
 
 export interface EventBus {
+  publish<TPayload = unknown>(
+    topic: string,
+    payload: TPayload
+  ): Promise<{
+    driver: string;
+    topic: string;
+    messageId?: string;
+    publishedAt: string;
+  }>;
   subscribe<TPayload = unknown>(
     topic: string,
     handler: (message: EventBusMessage<TPayload>) => Promise<void> | void

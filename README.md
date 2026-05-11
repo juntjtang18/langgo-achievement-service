@@ -23,7 +23,9 @@ The upstream package includes a `prepare` script, so installing from GitHub buil
 - `GET /achievements-achieved`
 - `GET /achievements-not-achieved`
 - `GET /healthz`
+- `GET /admin/login` and `GET /admin`
 - Internal API key auth via `x-internal-key`
+- Strapi-admin-backed authentication for the built-in admin UI
 - Postgres schema bootstrap and optional `backup/*.sql` restore
 - Event-bus subscription using the Postgres event bus client
 - Graceful shutdown and structured logs
@@ -42,6 +44,7 @@ Use `.env.example` as the baseline. Required variables:
 Defaults:
 
 - `PORT=8080`
+- `STRAPI_ADMIN_URL=https://langgo-en-strapi.geniusparentingai.ca/admin/auth/login`
 - `ACHIEVEMENT_DB_SCHEMA=achievement_system`
 - `DATABASE_PORT=5432`
 - `DATABASE_SSL=false`
@@ -76,6 +79,21 @@ npm run dev
 npm run build
 npm run start
 ```
+
+5. Open the admin UI:
+
+```text
+http://localhost:8080/admin/login
+```
+
+The admin login form authenticates against `STRAPI_ADMIN_URL`, then gives access to CRUD screens for:
+
+- `as_achievements`
+- `as_achievement_translations`
+- `as_event_lists`
+- `as_user_achievements`
+
+The admin page also includes a manual event publisher that sends JSON payloads through the configured event bus so you can test the live achievement logic.
 
 Example request:
 

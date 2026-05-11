@@ -14,6 +14,8 @@ export class EventSubscriberService {
   ) {}
 
   async register(): Promise<void> {
+    await this.unregister();
+
     const eventNames = await this.repository.listEventNames();
 
     for (const eventName of eventNames) {
@@ -34,8 +36,16 @@ export class EventSubscriberService {
     this.logger.info({ eventNames }, 'registered event bus subscribers');
   }
 
-  async close(): Promise<void> {
+  async refresh(): Promise<void> {
+    await this.register();
+  }
+
+  private async unregister(): Promise<void> {
     await Promise.all(this.subscriptions.map((handle) => handle.unsubscribe()));
     this.subscriptions = [];
+  }
+
+  async close(): Promise<void> {
+    await this.unregister();
   }
 }

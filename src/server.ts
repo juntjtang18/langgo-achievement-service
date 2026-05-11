@@ -2,9 +2,11 @@ import { createServer } from 'node:http';
 import { loadConfig } from './config';
 import { Database } from './db';
 import { createLogger } from './logger';
+import { AdminRepository } from './repositories/adminRepository';
 import { AchievementRepository } from './repositories/achievementRepository';
 import { createApp } from './app';
 import { AchievementService } from './services/achievementService';
+import { AdminAuthService } from './services/adminAuthService';
 import { ProgressService } from './services/progressService';
 import { EventHandlerService } from './services/eventHandler';
 import { EventSubscriberService } from './services/eventSubscriberService';
@@ -18,6 +20,8 @@ async function main() {
   await db.initialize();
 
   const repository = new AchievementRepository(db);
+  const adminRepository = new AdminRepository(db);
+  const adminAuthService = new AdminAuthService(config.strapiAdminUrl);
   const achievementService = new AchievementService(repository);
   const progressService = new ProgressService(db, repository, logger);
   const eventHandler = new EventHandlerService(progressService);
@@ -33,7 +37,15 @@ async function main() {
 
   await subscriberService.register();
 
-  const app = createApp(achievementService, logger, config.internalKey);
+  const app = createApp({
+    achievementService,
+    logger,
+    internalKey: config.internalKey,
+    adminRepository,
+    adminAuthService,
+    eventBus,
+    subscriberService,
+  });
   const httpServer = createServer(app);
 
   const shutdown = async (signal: string) => {
