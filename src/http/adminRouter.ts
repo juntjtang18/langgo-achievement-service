@@ -285,6 +285,30 @@ function renderSectionShell(title: string, description: string, body: string, op
   );
 }
 
+function renderNewRecordPage(
+  title: string,
+  description: string,
+  backHref: string,
+  fieldsHtml: string,
+  formAction: string,
+  options: AdminLayoutOptions
+): string {
+  return renderSectionShell(
+    title,
+    description,
+    `<form method="post" action="${formAction}" class="vstack gap-3">
+      <div class="d-flex justify-content-between align-items-center">
+        <a class="btn btn-sm btn-outline-secondary" href="${backHref}"><i class="bi bi-arrow-left"></i></a>
+        ${iconButton({ label: 'Create record', icon: 'plus-lg' })}
+      </div>
+      <div class="row g-3">
+        ${fieldsHtml}
+      </div>
+    </form>`,
+    options
+  );
+}
+
 function renderFilterToolbar(path: string, state: PageState, total: number): string {
   return `
     <form method="get" action="${path}" class="row g-2 align-items-end mb-3">
@@ -355,14 +379,9 @@ function renderAchievementsPage(result: AdminPageResult<AdminAchievementRow>, st
   return renderSectionShell(
     'Achievements',
     'Manage achievement definitions stored in as_achievements.',
-    `<form method="post" action="/admin/achievements/create" class="row g-2 mb-3">
-      <div class="col-12 col-md-4 col-xl-3"><label class="form-label">code</label><input class="form-control form-control-sm font-monospace" name="code" required /></div>
-      <div class="col-12 col-md-4 col-xl-3"><label class="form-label">event_name</label><input class="form-control form-control-sm font-monospace" name="event_name" required /></div>
-      <div class="col-12 col-md-4 col-xl-2"><label class="form-label">icon_name</label><input class="form-control form-control-sm font-monospace" name="icon_name" /></div>
-      <div class="col-6 col-md-2 col-xl-2"><label class="form-label">points</label><input class="form-control form-control-sm font-monospace" name="points" type="number" value="1" required /></div>
-      <div class="col-6 col-md-2 col-xl-2"><label class="form-label">goal</label><input class="form-control form-control-sm font-monospace" name="goal" type="number" value="1" required /></div>
-      <div class="col-12 d-flex justify-content-end">${iconButton({ label: 'Create achievement', icon: 'plus-lg' })}</div>
-    </form>
+    `<div class="d-flex justify-content-end mb-3">
+      <a class="btn btn-sm btn-primary" href="/admin/achievements/new" title="Add achievement" aria-label="Add achievement"><i class="bi bi-plus-lg"></i></a>
+    </div>
     ${renderFilterToolbar('/admin/achievements', state, result.total)}
     <div class="table-responsive">
       <table class="table table-sm align-middle">
@@ -395,13 +414,9 @@ function renderTranslationsPage(result: AdminPageResult<AdminTranslationRow>, st
   return renderSectionShell(
     'Translations',
     'Manage localized rows stored in as_achievement_translations.',
-    `<form method="post" action="/admin/translations/create" class="row g-2 mb-3">
-      <div class="col-12 col-md-3"><label class="form-label">achievement_id</label><input class="form-control form-control-sm font-monospace" name="achievement_id" type="number" required /></div>
-      <div class="col-12 col-md-2"><label class="form-label">locale</label><input class="form-control form-control-sm font-monospace" name="locale" value="en" required /></div>
-      <div class="col-12 col-md-3"><label class="form-label">title</label><input class="form-control form-control-sm font-monospace" name="title" /></div>
-      <div class="col-12 col-md-4"><label class="form-label">description</label><input class="form-control form-control-sm font-monospace" name="description" /></div>
-      <div class="col-12 d-flex justify-content-end">${iconButton({ label: 'Create translation', icon: 'plus-lg' })}</div>
-    </form>
+    `<div class="d-flex justify-content-end mb-3">
+      <a class="btn btn-sm btn-primary" href="/admin/translations/new" title="Add translation" aria-label="Add translation"><i class="bi bi-plus-lg"></i></a>
+    </div>
     ${renderFilterToolbar('/admin/translations', state, result.total)}
     <div class="table-responsive">
       <table class="table table-sm align-middle">
@@ -432,14 +447,12 @@ function renderEventListsPage(result: AdminPageResult<AdminEventListRow>, state:
   return renderSectionShell(
     'Event Lists',
     'Manage subscribed topics stored in as_event_lists.',
-    `<form method="post" action="/admin/event-lists/create" class="row g-2 mb-3">
-      <div class="col-12 col-md-6"><label class="form-label">event_name</label><input class="form-control form-control-sm font-monospace" name="event_name" required /></div>
-      <div class="col-12 col-md-3"><label class="form-label">points</label><input class="form-control form-control-sm font-monospace" name="points" type="number" value="1" required /></div>
-      <div class="col-12 col-md-3 d-flex align-items-end justify-content-end gap-2">
-        ${iconButton({ label: 'Refresh subscriptions', icon: 'arrow-clockwise', tone: 'secondary', formaction: '/admin/subscriptions/refresh' })}
-        ${iconButton({ label: 'Create event list row', icon: 'plus-lg' })}
-      </div>
-    </form>
+    `<div class="d-flex justify-content-end gap-2 mb-3">
+      <form method="post" action="/admin/subscriptions/refresh" class="m-0">
+        ${iconButton({ label: 'Refresh subscriptions', icon: 'arrow-clockwise', tone: 'secondary' })}
+      </form>
+      <a class="btn btn-sm btn-primary" href="/admin/event-lists/new" title="Add event list row" aria-label="Add event list row"><i class="bi bi-plus-lg"></i></a>
+    </div>
     ${renderFilterToolbar('/admin/event-lists', state, result.total)}
     <div class="table-responsive">
       <table class="table table-sm align-middle">
@@ -481,6 +494,53 @@ function renderUserAchievementsPage(result: AdminPageResult<AdminUserAchievement
         <tbody>${rows}</tbody>
       </table>
     </div>`,
+    options
+  );
+}
+
+function renderNewAchievementPage(options: AdminLayoutOptions): string {
+  return renderNewRecordPage(
+    'New Achievement',
+    'Create a new row in as_achievements.',
+    '/admin/achievements',
+    `
+      <div class="col-12 col-md-6"><label class="form-label">code</label><input class="form-control form-control-sm font-monospace" name="code" required /></div>
+      <div class="col-12 col-md-6"><label class="form-label">event_name</label><input class="form-control form-control-sm font-monospace" name="event_name" required /></div>
+      <div class="col-12 col-md-4"><label class="form-label">icon_name</label><input class="form-control form-control-sm font-monospace" name="icon_name" /></div>
+      <div class="col-6 col-md-4"><label class="form-label">points</label><input class="form-control form-control-sm font-monospace" name="points" type="number" value="1" required /></div>
+      <div class="col-6 col-md-4"><label class="form-label">goal</label><input class="form-control form-control-sm font-monospace" name="goal" type="number" value="1" required /></div>
+    `,
+    '/admin/achievements/create',
+    options
+  );
+}
+
+function renderNewTranslationPage(options: AdminLayoutOptions): string {
+  return renderNewRecordPage(
+    'New Translation',
+    'Create a new row in as_achievement_translations.',
+    '/admin/translations',
+    `
+      <div class="col-12 col-md-3"><label class="form-label">achievement_id</label><input class="form-control form-control-sm font-monospace" name="achievement_id" type="number" required /></div>
+      <div class="col-12 col-md-3"><label class="form-label">locale</label><input class="form-control form-control-sm font-monospace" name="locale" value="en" required /></div>
+      <div class="col-12 col-md-6"><label class="form-label">title</label><input class="form-control form-control-sm font-monospace" name="title" /></div>
+      <div class="col-12"><label class="form-label">description</label><input class="form-control form-control-sm font-monospace" name="description" /></div>
+    `,
+    '/admin/translations/create',
+    options
+  );
+}
+
+function renderNewEventListPage(options: AdminLayoutOptions): string {
+  return renderNewRecordPage(
+    'New Event List Row',
+    'Create a new row in as_event_lists.',
+    '/admin/event-lists',
+    `
+      <div class="col-12 col-md-8"><label class="form-label">event_name</label><input class="form-control form-control-sm font-monospace" name="event_name" required /></div>
+      <div class="col-12 col-md-4"><label class="form-label">points</label><input class="form-control form-control-sm font-monospace" name="points" type="number" value="1" required /></div>
+    `,
+    '/admin/event-lists/create',
     options
   );
 }
@@ -564,6 +624,10 @@ export function createAdminRouter(deps: AdminRouterDependencies): Router {
     }
   });
 
+  router.get('/achievements/new', (req, res) => {
+    res.type('html').send(renderNewAchievementPage(pageOptions(req, res.locals.adminSession.email, 'achievements')));
+  });
+
   router.get('/translations', async (req, res) => {
     const state = readPageState(req);
     try {
@@ -575,6 +639,10 @@ export function createAdminRouter(deps: AdminRouterDependencies): Router {
     }
   });
 
+  router.get('/translations/new', (req, res) => {
+    res.type('html').send(renderNewTranslationPage(pageOptions(req, res.locals.adminSession.email, 'translations')));
+  });
+
   router.get('/event-lists', async (req, res) => {
     const state = readPageState(req);
     try {
@@ -584,6 +652,10 @@ export function createAdminRouter(deps: AdminRouterDependencies): Router {
       deps.logger.error({ err: error }, 'failed to render event lists admin page');
       redirectWithNotice(res, buildSectionUrl('/admin/event-lists', state), 'error', error instanceof Error ? error.message : 'Failed to load event lists.');
     }
+  });
+
+  router.get('/event-lists/new', (req, res) => {
+    res.type('html').send(renderNewEventListPage(pageOptions(req, res.locals.adminSession.email, 'event-lists')));
   });
 
   router.get('/user-achievements', async (req, res) => {

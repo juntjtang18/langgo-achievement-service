@@ -115,6 +115,8 @@ describe('http routes', () => {
     expect(response.text).toContain('name="where"');
     expect(response.text).toContain('name="pageSize"');
     expect(response.text).toContain('points &gt;= 1');
+    expect(response.text).toContain('href="/admin/achievements/new"');
+    expect(response.text).not.toContain('action="/admin/achievements/create"');
     expect(response.text).not.toContain('Manual Event Emit</h2>');
     expect(response.text).not.toContain('User Achievements</h2>');
   });
