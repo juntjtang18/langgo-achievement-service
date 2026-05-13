@@ -22,7 +22,7 @@ describe('achievement service', () => {
         {
           id: 10,
           code: 'review-novice',
-          event_name: 'flashcard.review',
+          event_name: 'flashcard.reviewed',
           icon_name: null,
           points: 2,
           goal: 5,
@@ -50,7 +50,7 @@ describe('achievement service', () => {
       {
         id: 10,
         code: 'review-novice',
-        event_name: 'flashcard.review',
+        event_name: 'flashcard.reviewed',
         icon_name: null,
         points: 2,
         goal: 5,
@@ -73,11 +73,11 @@ describe('achievement service', () => {
     } as ProgressService);
 
     const result = await eventHandler.handle({
-      topic: 'flashcard.review',
+      topic: 'flashcard.reviewed',
       payload: {
-        userid: 8,
+        userId: 8,
         username: 'vivian',
-        event_name: 'flashcard.review',
+        eventType: 'flashcard.reviewed',
       },
       ack: async () => undefined,
       nack: async () => undefined,
@@ -86,13 +86,13 @@ describe('achievement service', () => {
     expect(result).toEqual({ updated: 1 });
     expect(calls).toEqual([
       {
-        event_name: 'flashcard.review',
+        event_name: 'flashcard.reviewed',
         userid: '8',
         username: 'vivian',
         payload: {
-          userid: 8,
+          userId: 8,
           username: 'vivian',
-          event_name: 'flashcard.review',
+          eventType: 'flashcard.reviewed',
         },
       },
     ]);
@@ -101,28 +101,28 @@ describe('achievement service', () => {
   it('accepts only the unified event schema', async () => {
     const cases = [
       {
-        testCase: 'top-level userid/username on flashcard.create',
-        topic: 'flashcard.create',
+        testCase: 'top-level userId/username on flashcard.created',
+        topic: 'flashcard.created',
         payload: {
-          userid: 101,
+          userId: 101,
           username: 'alpha',
-          event_name: 'flashcard.create',
+          eventType: 'flashcard.created',
         },
         expected: {
-          event_name: 'flashcard.create',
+          event_name: 'flashcard.created',
           userid: '101',
           username: 'alpha',
         },
       },
       {
-        testCase: 'topic falls back when event_name is omitted',
-        topic: 'flashcard.review',
+        testCase: 'topic falls back when eventType is omitted',
+        topic: 'flashcard.reviewed',
         payload: {
-          userid: 102,
+          userId: 102,
           username: 'bravo',
         },
         expected: {
-          event_name: 'flashcard.review',
+          event_name: 'flashcard.reviewed',
           userid: '102',
           username: 'bravo',
         },
@@ -158,7 +158,7 @@ describe('achievement service', () => {
     }
   });
 
-  it('ignores legacy alias fields that are outside the unified schema', async () => {
+  it('accepts canonical userId/username fields while preserving canonical userid/username when both are present', async () => {
     const calls: any[] = [];
     const eventHandler = new EventHandlerService({
       applyEvent: async (event) => {
@@ -170,7 +170,7 @@ describe('achievement service', () => {
     await eventHandler.handle({
       topic: '',
       payload: {
-        event_name: 'flashcard.review',
+        eventType: 'flashcard.reviewed',
         userid: 501,
         username: 'canonical-user',
         userId: 999,
@@ -181,7 +181,7 @@ describe('achievement service', () => {
     });
 
     await eventHandler.handle({
-      topic: 'flashcard.create',
+      topic: 'flashcard.created',
       payload: {
         userId: 502,
         userName: 'legacy-user',
@@ -192,14 +192,14 @@ describe('achievement service', () => {
 
     const expected = [
       {
-        event_name: 'flashcard.review',
+        event_name: 'flashcard.reviewed',
         userid: '501',
         username: 'canonical-user',
       },
       {
-        event_name: 'flashcard.create',
-        userid: null,
-        username: null,
+        event_name: 'flashcard.created',
+        userid: '502',
+        username: 'legacy-user',
       },
     ];
 
@@ -210,7 +210,7 @@ describe('achievement service', () => {
     }));
 
     reportCase(
-      'achievement handler only reads userid, username, and event_name',
+      'achievement handler accepts canonical Strapi event fields and legacy aliases',
       expected,
       actual
     );
@@ -232,10 +232,10 @@ describe('achievement service', () => {
     }>();
 
     const definitions = [
-      { achievement_id: 1, event_name: 'flashcard.create', points: 1, goal: 2 },
-      { achievement_id: 2, event_name: 'flashcard.review', points: 2, goal: 5 },
+      { achievement_id: 1, event_name: 'flashcard.created', points: 1, goal: 2 },
+      { achievement_id: 2, event_name: 'flashcard.reviewed', points: 2, goal: 5 },
       { achievement_id: 3, event_name: 'flashcard.remembered', points: 3, goal: 3 },
-      { achievement_id: 4, event_name: 'article.create', points: 1, goal: 1 },
+      { achievement_id: 4, event_name: 'article.created', points: 1, goal: 1 },
     ];
     const eventLogs: Array<{ id: number; event_name: string; userid: string | null; username: string | null; payload_json: unknown }> = [];
     const changeLogs: Array<{ event_log_id: number; achievement_id: number; points_added: number; progress_before: number; progress_after: number }> = [];
@@ -315,18 +315,18 @@ describe('achievement service', () => {
     const eventHandler = new EventHandlerService(progressService);
     const cases = [
       {
-        testCase: 'flashcard.create increments by 1 and stays unachieved below goal',
+        testCase: 'flashcard.created increments by 1 and stays unachieved below goal',
         message: {
-          topic: 'flashcard.create',
-          payload: { userid: 200, username: 'iris', event_name: 'flashcard.create' },
+          topic: 'flashcard.created',
+          payload: { userId: 200, username: 'iris', eventType: 'flashcard.created' },
         },
         expected: { progress: 1, achieved: false },
       },
       {
-        testCase: 'flashcard.review increments by 2 and stays unachieved below goal',
+        testCase: 'flashcard.reviewed increments by 2 and stays unachieved below goal',
         message: {
-          topic: 'flashcard.review',
-          payload: { userid: 200, username: 'iris', event_name: 'flashcard.review' },
+          topic: 'flashcard.reviewed',
+          payload: { userId: 200, username: 'iris', eventType: 'flashcard.reviewed' },
         },
         expected: { progress: 2, achieved: false },
       },
@@ -334,39 +334,39 @@ describe('achievement service', () => {
         testCase: 'flashcard.remembered increments by 3 and reaches goal',
         message: {
           topic: 'flashcard.remembered',
-          payload: { userid: 200, username: 'iris', event_name: 'flashcard.remembered' },
+          payload: { userId: 200, username: 'iris', eventType: 'flashcard.remembered' },
         },
         expected: { progress: 3, achieved: true },
       },
       {
-        testCase: 'article.create increments by 1 and reaches goal',
+        testCase: 'article.created increments by 1 and reaches goal',
         message: {
-          topic: 'article.create',
-          payload: { userid: 200, username: 'iris', event_name: 'article.create' },
+          topic: 'article.created',
+          payload: { userId: 200, username: 'iris', eventType: 'article.created' },
         },
         expected: { progress: 1, achieved: true },
       },
       {
-        testCase: 'second flashcard.create reaches its goal on the second event',
+        testCase: 'second flashcard.created reaches its goal on the second event',
         message: {
-          topic: 'flashcard.create',
-          payload: { userid: 200, username: 'iris', event_name: 'flashcard.create' },
+          topic: 'flashcard.created',
+          payload: { userId: 200, username: 'iris', eventType: 'flashcard.created' },
         },
         expected: { progress: 2, achieved: true },
       },
       {
-        testCase: 'second flashcard.review accumulates to 4 and stays below goal',
+        testCase: 'second flashcard.reviewed accumulates to 4 and stays below goal',
         message: {
-          topic: 'flashcard.review',
-          payload: { userid: 200, username: 'iris', event_name: 'flashcard.review' },
+          topic: 'flashcard.reviewed',
+          payload: { userId: 200, username: 'iris', eventType: 'flashcard.reviewed' },
         },
         expected: { progress: 4, achieved: false },
       },
       {
-        testCase: 'third flashcard.review accumulates to 6 and reaches goal',
+        testCase: 'third flashcard.reviewed accumulates to 6 and reaches goal',
         message: {
-          topic: 'flashcard.review',
-          payload: { userid: 200, username: 'iris', event_name: 'flashcard.review' },
+          topic: 'flashcard.reviewed',
+          payload: { userId: 200, username: 'iris', eventType: 'flashcard.reviewed' },
         },
         expected: { progress: 6, achieved: true },
       },
@@ -402,13 +402,13 @@ describe('achievement service', () => {
     };
     const auditExpected = {
       eventLogs: [
-        { event_name: 'flashcard.create', userid: '200' },
-        { event_name: 'flashcard.review', userid: '200' },
+        { event_name: 'flashcard.created', userid: '200' },
+        { event_name: 'flashcard.reviewed', userid: '200' },
         { event_name: 'flashcard.remembered', userid: '200' },
-        { event_name: 'article.create', userid: '200' },
-        { event_name: 'flashcard.create', userid: '200' },
-        { event_name: 'flashcard.review', userid: '200' },
-        { event_name: 'flashcard.review', userid: '200' },
+        { event_name: 'article.created', userid: '200' },
+        { event_name: 'flashcard.created', userid: '200' },
+        { event_name: 'flashcard.reviewed', userid: '200' },
+        { event_name: 'flashcard.reviewed', userid: '200' },
       ],
       changeLogs: [
         { event_log_id: 1, achievement_id: 1, points_added: 1, progress_before: 0, progress_after: 1 },

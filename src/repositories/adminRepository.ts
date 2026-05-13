@@ -203,11 +203,19 @@ export class AdminRepository {
            (SELECT COUNT(*)::text FROM ${this.achievementsTable}) AS achievement_definitions`
       ),
       this.db.query<{ day: string; count: string }>(
-        `SELECT received_at::date::text AS day, COUNT(*)::text AS count
-         FROM ${this.eventLogsTable}
-         WHERE received_at >= CURRENT_DATE - INTERVAL '119 days'
-         GROUP BY received_at::date
-         ORDER BY received_at::date ASC`
+        `WITH days AS (
+           SELECT generate_series(CURRENT_DATE - INTERVAL '119 days', CURRENT_DATE, INTERVAL '1 day')::date AS day
+         ),
+         event_counts AS (
+           SELECT received_at::date AS day, COUNT(*)::text AS count
+           FROM ${this.eventLogsTable}
+           WHERE received_at >= CURRENT_DATE - INTERVAL '119 days'
+           GROUP BY received_at::date
+         )
+         SELECT days.day::text AS day, COALESCE(event_counts.count, '0') AS count
+         FROM days
+         LEFT JOIN event_counts ON event_counts.day = days.day
+         ORDER BY days.day ASC`
       ),
       this.db.query<{ event_name: string; count: string }>(
         `SELECT event_name, COUNT(*)::text AS count
@@ -217,11 +225,19 @@ export class AdminRepository {
          ORDER BY COUNT(*) DESC, event_name ASC`
       ),
       this.db.query<{ day: string; points: string }>(
-        `SELECT created_at::date::text AS day, COALESCE(SUM(points_added), 0)::text AS points
-         FROM ${this.changeLogsTable}
-         WHERE created_at >= CURRENT_DATE - INTERVAL '119 days'
-         GROUP BY created_at::date
-         ORDER BY created_at::date ASC`
+        `WITH days AS (
+           SELECT generate_series(CURRENT_DATE - INTERVAL '119 days', CURRENT_DATE, INTERVAL '1 day')::date AS day
+         ),
+         point_totals AS (
+           SELECT created_at::date AS day, COALESCE(SUM(points_added), 0)::text AS points
+           FROM ${this.changeLogsTable}
+           WHERE created_at >= CURRENT_DATE - INTERVAL '119 days'
+           GROUP BY created_at::date
+         )
+         SELECT days.day::text AS day, COALESCE(point_totals.points, '0') AS points
+         FROM days
+         LEFT JOIN point_totals ON point_totals.day = days.day
+         ORDER BY days.day ASC`
       ),
       this.db.query<{ userid: string; username: string | null; count: string }>(
         `SELECT userid, MAX(username) AS username, COUNT(*)::text AS count

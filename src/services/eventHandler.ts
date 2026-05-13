@@ -2,11 +2,11 @@ import type { EventBusMessage } from '../types';
 import { ProgressService } from './progressService';
 
 function pickUserId(payload: Record<string, any> = {}): string | number | null {
-  return payload.userid ?? null;
+  return payload.userid ?? payload.userId ?? null;
 }
 
 function pickUsername(payload: Record<string, any> = {}): string | null {
-  return payload.username ?? null;
+  return payload.username ?? payload.userName ?? null;
 }
 
 export class EventHandlerService {
@@ -16,6 +16,7 @@ export class EventHandlerService {
     const payload = message.payload ?? {};
     const eventName =
       message.topic ||
+      payload.eventType ||
       payload.event_name ||
       '';
 

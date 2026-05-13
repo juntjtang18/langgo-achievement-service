@@ -606,20 +606,12 @@ function renderDashboardPage(options: AdminLayoutOptions, data: AdminDashboardDa
       ${cards}
     </div>
     <div class="row g-4">
-      <div class="col-12 col-xl-6">
+      <div class="col-12">
         <div class="card border-0 shadow-sm h-100">
           <div class="card-body">
             <h2 class="h5 mb-1">Event Graph</h2>
             <p class="text-secondary small mb-3">X-axis: date. Y-axis: event count. Window: up to 120 days.</p>
-            <canvas id="daily-events-chart" height="120"></canvas>
-          </div>
-        </div>
-      </div>
-      <div class="col-12 col-xl-6">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body">
-            <h2 class="h5 mb-3">Daily Points Added</h2>
-            <canvas id="daily-points-chart" height="120"></canvas>
+            <canvas id="daily-events-chart" height="60"></canvas>
           </div>
         </div>
       </div>
@@ -627,7 +619,18 @@ function renderDashboardPage(options: AdminLayoutOptions, data: AdminDashboardDa
         <div class="card border-0 shadow-sm h-100">
           <div class="card-body">
             <h2 class="h5 mb-3">Events by Type</h2>
-            <canvas id="event-types-chart" height="140"></canvas>
+            <div class="table-responsive">
+              <table class="table table-sm mb-0">
+                <thead><tr><th>Event Name</th><th>Count</th></tr></thead>
+                <tbody>
+                  ${data.eventTypeCounts.map((row) => `
+                    <tr>
+                      <td class="font-monospace">${escapeHtml(row.event_name)}</td>
+                      <td>${row.count}</td>
+                    </tr>`).join('') || '<tr><td colspan="2" class="text-secondary">No data</td></tr>'}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -685,37 +688,6 @@ function renderDashboardPage(options: AdminLayoutOptions, data: AdminDashboardDa
         'Events',
         '#2563eb'
       );
-
-      buildLineChart(
-        'daily-points-chart',
-        dashboardData.dailyPoints.map((row) => row.day),
-        dashboardData.dailyPoints.map((row) => row.points),
-        'Points Added',
-        '#d97706'
-      );
-
-      const eventTypesEl = document.getElementById('event-types-chart');
-      if (eventTypesEl) {
-        new Chart(eventTypesEl, {
-          type: 'bar',
-          data: {
-            labels: dashboardData.eventTypeCounts.map((row) => row.event_name),
-            datasets: [{
-              data: dashboardData.eventTypeCounts.map((row) => row.count),
-              backgroundColor: ['#2563eb', '#059669', '#d97706', '#dc2626', '#7c3aed', '#0891b2', '#4b5563'],
-              borderRadius: 6,
-            }]
-          },
-          options: {
-            responsive: true,
-            plugins: { legend: { display: false } },
-            scales: {
-              x: { ticks: { color: chartFontColor }, grid: { display: false } },
-              y: { beginAtZero: true, ticks: { color: chartFontColor }, grid: { color: gridColor } }
-            }
-          }
-        });
-      }
     </script>`,
     options
   );

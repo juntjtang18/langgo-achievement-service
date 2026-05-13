@@ -28,6 +28,7 @@ function createTestApp() {
       listAchievements: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
       listTranslations: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
       listEventLists: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
+      listAllEventNames: async () => ['flashcard.review'],
       listUserAchievements: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
       listEventLogs: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
       listAchievementChangeLogs: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
@@ -117,6 +118,7 @@ describe('http routes', () => {
         listAchievements: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
         listTranslations: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
         listEventLists: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
+        listAllEventNames: async () => ['flashcard.review'],
         listUserAchievements: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
       } as any,
       adminAuthService: {
@@ -179,6 +181,7 @@ describe('http routes', () => {
         listAchievements: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
         listTranslations: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
         listEventLists: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
+        listAllEventNames: async () => ['flashcard.review'],
         listUserAchievements: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
         listEventLogs: async () => ({
           rows: [{
@@ -242,6 +245,7 @@ describe('http routes', () => {
         listAchievements: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
         listTranslations: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
         listEventLists: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
+        listAllEventNames: async () => ['flashcard.review'],
         listUserAchievements: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
         listEventLogs: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
         listAchievementChangeLogs: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
@@ -281,7 +285,7 @@ describe('http routes', () => {
         payload_json: '{"userid":"8","username":"vivian"}',
       });
 
-    expect(response.status).toBe(302);
+    expect(response.status).toBe(200);
     expect(publishes).toHaveLength(1);
     expect(publishes[0].topic).toBe('flashcard.review');
     expect(typeof publishes[0].payload.event_id).toBe('string');
