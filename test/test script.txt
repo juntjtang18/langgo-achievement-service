@@ -29,3 +29,81 @@ Emitted 'error' event on Client instance at:
     at Pipe.<anonymous> (node:net:346:12)
 
 Node.js v24.2.0
+
+
+
+• Canonical event schemas in this project:
+
+  1. user.registered
+
+  {
+    "eventId": "user.registered:8",
+    "eventType": "user.registered",
+    "occurredAt": "2026-05-12T02:38:59.747Z",
+    "userId": 8,
+    "username": "vivian",
+    "visibleOnLadder": true
+  }
+
+  2. user_profile.visibility_updated
+
+  {
+    "eventId": "user_profile.visibility_updated:60:2026-05-12T02:38:59.747Z",
+    "eventType": "user_profile.visibility_updated",
+    "occurredAt": "2026-05-12T02:38:59.747Z",
+    "userId": 60,
+    "username": "chinese2",
+    "visibleOnLadder": false
+  }
+
+  3. flashcard.created
+
+  {
+    "eventId": "flashcard.created:3001",
+    "eventType": "flashcard.created",
+    "occurredAt": "2026-05-12T02:38:59.747Z",
+    "flashcardId": 3001,
+    "userId": 8,
+    "username": "vivian"
+  }
+
+  4. flashcard.reviewed
+
+  {
+    "eventId": "flashcard.reviewed:3001:8:2026-05-12T02:38:59.747Z",
+    "eventType": "flashcard.reviewed",
+    "occurredAt": "2026-05-12T02:38:59.747Z",
+    "flashcardId": 3001,
+    "userId": 8,
+    "username": "vivian",
+    "result": "correct",
+    "tierBefore": "new",
+    "effective": true
+  }
+
+  5. flashcard.review_tier_promoted
+
+  {
+    "eventId": "flashcard.review_tier_promoted:3001:8:2026-05-12T02:38:59.747Z",
+    "eventType": "flashcard.review_tier_promoted",
+    "occurredAt": "2026-05-12T02:38:59.747Z",
+    "flashcardId": 3001,
+    "userId": 8,
+    "username": "vivian",
+    "tierBefore": "new",
+    "tierAfter": "warmup"
+  }
+
+  6. article.created
+
+  {
+    "eventId": "article.created:7001",
+    "eventType": "article.created",
+    "occurredAt": "2026-05-12T02:38:59.747Z",
+    "articleId": 7001,
+    "userId": 8,
+    "username": "vivian"
+  }
+
+
+

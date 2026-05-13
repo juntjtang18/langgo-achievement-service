@@ -33,7 +33,7 @@ export class EventSubscriberService {
       this.subscriptions.push(handle);
     }
 
-    this.logger.info({ eventNames }, 'registered event bus subscribers');
+    this.logger.info({ eventNames, eventCount: eventNames.length }, 'Subscribed to achievement events');
   }
 
   async refresh(): Promise<void> {

@@ -72,6 +72,8 @@ export class Database {
     if (!valid) {
       throw new Error(`Database initialization failed for schema "${this.schema}".`);
     }
+
+    this.logger.info({ schema: this.schema }, 'Database ready');
   }
 
   async connectClient(): Promise<PoolClient> {
@@ -147,7 +149,7 @@ export class Database {
       return false;
     }
 
-    this.logger.info({ schema: this.schema, files }, 'restoring achievement schema from backup SQL');
+    this.logger.info({ schema: this.schema, files }, 'Restoring schema from backup SQL');
     for (const file of files) {
       await this.applySqlFile(path.join(backupDir, file));
     }

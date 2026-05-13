@@ -1,7 +1,7 @@
 import { createServer } from 'node:http';
 import { loadConfig } from './config';
 import { Database } from './db';
-import { createLogger } from './logger';
+import { createEventBusLogger, createLogger } from './logger';
 import { AdminRepository } from './repositories/adminRepository';
 import { AchievementRepository } from './repositories/achievementRepository';
 import { createApp } from './app';
@@ -15,6 +15,7 @@ import { createEventBus } from 'event-bus-client';
 async function main() {
   const config = loadConfig();
   const logger = createLogger(config.logLevel);
+  const eventBusLogger = createEventBusLogger(logger);
   const db = new Database(config, logger);
 
   await db.initialize();
@@ -31,9 +32,17 @@ async function main() {
       connectionString: process.env.EVENT_BUS_POSTGRES_URL ?? '',
       channelPrefix: process.env.EVENT_BUS_CHANNEL_PREFIX ?? 'event_bus',
     },
-    logger,
+    logger: eventBusLogger,
   });
   const subscriberService = new EventSubscriberService(repository, eventBus, eventHandler, logger);
+
+  logger.info(
+    {
+      driver: eventBus.driver,
+      channelPrefix: process.env.EVENT_BUS_CHANNEL_PREFIX ?? 'event_bus',
+    },
+    'Event bus enabled'
+  );
 
   await subscriberService.register();
 
@@ -49,7 +58,7 @@ async function main() {
   const httpServer = createServer(app);
 
   const shutdown = async (signal: string) => {
-    logger.info({ signal }, 'shutting down achievement server');
+    logger.info({ signal }, 'Shutting down server');
     httpServer.close();
     await subscriberService.close().catch((error) => logger.error({ err: error }, 'failed to close subscribers'));
     await eventBus.close().catch((error) => logger.error({ err: error }, 'failed to close event bus'));
@@ -61,7 +70,7 @@ async function main() {
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
 
   httpServer.listen(config.port, () => {
-    logger.info({ port: config.port }, 'achievement server listening');
+    logger.info({ port: config.port }, 'Server listening');
   });
 }
 

@@ -169,7 +169,7 @@ function pagination(total: number, state: PageState, path: string): string {
 }
 
 function navLink(section: AdminSection, href: string, label: string, activeSection?: AdminSection): string {
-  return `<a class="nav-link rounded px-3 py-2 ${activeSection === section ? 'active bg-primary text-white' : 'text-light'}" href="${href}" aria-current="${activeSection === section ? 'page' : 'false'}">${escapeHtml(label)}</a>`;
+  return `<a class="sidebar-link ${activeSection === section ? 'active' : ''}" href="${href}" aria-current="${activeSection === section ? 'page' : 'false'}">${escapeHtml(label)}</a>`;
 }
 
 function iconButton(options: { label: string; icon: string; tone?: 'primary' | 'secondary' | 'danger'; formaction?: string; type?: 'submit' | 'button' }): string {
@@ -194,22 +194,21 @@ function normalizeManualEventPayload(topic: string, payload: Record<string, unkn
 function renderLayout(title: string, content: string, options: AdminLayoutOptions = {}): string {
   const notice = options.notice ? `<div class="alert alert-success" role="alert">${escapeHtml(options.notice)}</div>` : '';
   const error = options.error ? `<div class="alert alert-danger" role="alert">${escapeHtml(options.error)}</div>` : '';
-  const userEmail = options.userEmail ? `<div class="text-secondary small mt-1">${escapeHtml(options.userEmail)}</div>` : '';
   const sidebar = options.activeSection ? `
-    <aside class="position-fixed top-0 start-0 vh-100 text-bg-dark border-end" style="width: 248px;">
-      <div class="p-3">
-        <div class="fw-bold fs-5 text-white">Achievement Admin</div>
-        <div class="text-secondary small mb-4">Standalone service control plane</div>
-        <nav class="nav nav-pills flex-column gap-2">
+    <aside class="sidebar">
+      <div class="sidebar-group-label">Actions</div>
+      <nav class="sidebar-nav">
           ${navLink('events', '/admin/events', 'Manual Event Emit', options.activeSection)}
+      </nav>
+      <div class="sidebar-group-label">Entities</div>
+      <nav class="sidebar-nav">
           ${navLink('achievements', '/admin/achievements', 'Achievements', options.activeSection)}
           ${navLink('translations', '/admin/translations', 'Translations', options.activeSection)}
           ${navLink('event-lists', '/admin/event-lists', 'Event Lists', options.activeSection)}
           ${navLink('user-achievements', '/admin/user-achievements', 'User Achievements', options.activeSection)}
           ${navLink('event-logs', '/admin/event-logs', 'Event Logs', options.activeSection)}
           ${navLink('change-logs', '/admin/change-logs', 'Change Logs', options.activeSection)}
-        </nav>
-      </div>
+      </nav>
     </aside>` : '';
 
   return `<!doctype html>
@@ -221,23 +220,49 @@ function renderLayout(title: string, content: string, options: AdminLayoutOption
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-      body { background: #f6f8fb; }
-      .admin-main { margin-left: ${options.activeSection ? '248px' : '0'}; min-height: 100vh; }
-      .table-responsive { overflow: auto; }
-      th { white-space: nowrap; }
-      .sticky-header th { position: sticky; top: 0; background: #fff; z-index: 1; }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: #f4f6f8; color: #222; }
+      .top-banner { height: 64px; background: #1f2937; color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; position: sticky; top: 0; z-index: 10; }
+      .topbar-brand { font-size: 20px; font-weight: 700; letter-spacing: 0.01em; }
+      .top-banner-right { display: flex; align-items: center; gap: 20px; color: #d1d5db; font-size: 14px; }
+      .top-banner-right a { color: #d1d5db; text-decoration: none; }
+      .top-banner-right a:hover { color: #fff; }
+      .admin-shell { display: flex; height: calc(100vh - 64px); overflow: hidden; }
+      .sidebar { width: 220px; background: #111827; color: #fff; padding: 20px 0; flex-shrink: 0; overflow-y: auto; }
+      .sidebar-group-label { padding: 0 24px; margin: 0 0 10px; color: #9ca3af; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+      .sidebar-nav { display: block; margin-bottom: 18px; }
+      .sidebar-link { display: block; color: #d1d5db; text-decoration: none; padding: 12px 24px; font-size: 15px; }
+      .sidebar-link:hover, .sidebar-link.active { background: #374151; color: #fff; }
+      .content { flex: 1; padding: 24px; min-width: 0; overflow-y: auto; }
+      .card { background: #fff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08); padding: 20px; border: 0; }
+      .card-body { padding: 0; }
+      .table-wrapper { width: 100%; overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 8px; }
+      .table-wrapper table { width: max-content; min-width: 100%; border-collapse: collapse; background: #fff; margin: 0; }
+      .table-wrapper th, .table-wrapper td { padding: 12px 16px; border-bottom: 1px solid #e5e7eb; text-align: left; white-space: nowrap; font-size: 14px; vertical-align: top; background: #fff; }
+      .table-wrapper th { background: #f9fafb; font-weight: 700; color: #374151; position: sticky; top: 0; z-index: 1; }
+      .table-wrapper tbody tr:hover td { background: #f9fafb; }
+      .card-header-inline { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 16px; }
       .where-help code { white-space: nowrap; }
-      @media (max-width: 992px) {
-        .admin-main { margin-left: 0; }
-        aside.position-fixed { position: static !important; width: auto !important; height: auto !important; }
+      @media (max-width: 768px) {
+        .admin-shell { flex-direction: column; height: auto; overflow: visible; }
+        .sidebar { width: 100%; display: flex; overflow-x: auto; overflow-y: visible; padding: 0; }
+        .sidebar-group-label { display: none; }
+        .sidebar-nav { display: flex; margin: 0; }
+        .sidebar-link { white-space: nowrap; }
+        .content { padding: 16px; overflow-y: visible; }
       }
     </style>
   </head>
   <body>
-    ${sidebar}
-    <main class="admin-main p-4">
-      ${content.replace('<!--NOTICE-->', notice + error).replace('<!--USER-->', userEmail)}
-    </main>
+    <header class="top-banner">
+      <span class="topbar-brand">LangGo Achievement Admin</span>
+      ${options.userEmail ? `<div class="top-banner-right"><span>${escapeHtml(options.userEmail)}</span><a href="/admin/logout">Logout</a></div>` : ''}
+    </header>
+    ${notice || error ? `<div class="content pb-0">${notice}${error}</div>` : ''}
+    <div class="admin-shell">
+      ${options.activeSection ? sidebar : ''}
+      <main class="content">${content.replace('<!--NOTICE-->', '').replace('<!--USER-->', '')}</main>
+    </div>
   </body>
 </html>`;
 }
@@ -280,20 +305,15 @@ function renderLoginPage(strapiLoginUrl: string, notice?: string | null, error?:
 function renderSectionShell(title: string, description: string, body: string, options: AdminLayoutOptions): string {
   return renderLayout(
     title,
-    `<div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+    `<div class="card-header-inline">
       <div>
-        <h1 class="h3 mb-0">${escapeHtml(title)}</h1>
-        <!--USER-->
+        <h1 class="h3 mb-1">${escapeHtml(title)}</h1>
+        <p class="text-secondary mb-0">${escapeHtml(description)}</p>
       </div>
-      <a class="btn btn-outline-secondary btn-sm" href="/admin/logout">Logout</a>
     </div>
     <!--NOTICE-->
-    <div class="card shadow-sm border-0">
+    <div class="card">
       <div class="card-body">
-        <div class="mb-3">
-          <h2 class="h5 mb-1">${escapeHtml(title)}</h2>
-          <p class="text-secondary mb-0">${escapeHtml(description)}</p>
-        </div>
         ${body}
       </div>
     </div>`,
@@ -327,48 +347,65 @@ function renderNewRecordPage(
 
 function renderFilterToolbar(path: string, state: PageState, total: number): string {
   return `
-    <form method="get" action="${path}" class="row g-2 align-items-end mb-3">
-      <div class="col-12 col-lg-7">
-        <label class="form-label">where</label>
-        <input class="form-control form-control-sm font-monospace" name="where" value="${escapeHtml(state.whereClause)}" placeholder="e.g. event_name = 'flashcard.create' AND points >= 1" />
-        <div class="form-text where-help">Raw SQL sub-clause appended after <code>WHERE</code>. Column names must match DB fields exactly.</div>
-      </div>
-      <div class="col-6 col-lg-2">
-        <label class="form-label">pageSize</label>
-        <input class="form-control form-control-sm" name="pageSize" type="number" min="1" max="100" value="${state.pageSize}" />
-      </div>
-      <div class="col-6 col-lg-3">
-        <input type="hidden" name="page" value="1" />
-        <div class="d-flex gap-2">
-          ${iconButton({ label: 'Apply filter', icon: 'search' })}
-          <a class="btn btn-sm btn-outline-secondary" href="${path}"><i class="bi bi-arrow-clockwise"></i></a>
+    <form method="get" action="${path}" class="mb-3">
+      <div class="d-flex flex-column gap-3">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <label class="form-label mb-0 fw-semibold">Optional SQL sub-clause appended after <code>WHERE</code>.</label>
+          <input class="form-control form-control-sm font-monospace flex-grow-1" style="min-width: 320px;" name="where" value="${escapeHtml(state.whereClause)}" placeholder="e.g. event_name = 'flashcard.create' AND points >= 1" />
+          <input type="hidden" name="page" value="1" />
+          <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+        </div>
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+          <div class="d-flex flex-wrap align-items-center gap-4">
+            <div class="small text-secondary">
+              <span class="fw-semibold text-dark">Total Rows:</span> ${total}
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <label class="form-label mb-0 fw-semibold">PageSize</label>
+              <input class="form-control form-control-sm" style="width: 88px;" name="pageSize" type="number" min="1" max="100" value="${state.pageSize}" />
+              <button type="submit" class="btn btn-outline-secondary btn-sm" title="Apply page size" aria-label="Apply page size">
+                <i class="bi bi-check-lg"></i>
+              </button>
+              <a class="btn btn-outline-secondary btn-sm" href="${path}" title="Reset filters" aria-label="Reset filters">
+                <i class="bi bi-arrow-clockwise"></i>
+              </a>
+            </div>
+          </div>
+          <div class="d-flex align-items-center">
+            ${pagination(total, state, path)}
+          </div>
         </div>
       </div>
-    </form>
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <div class="text-secondary small">total rows: ${total}</div>
-      ${pagination(total, state, path)}
-    </div>`;
+    </form>`;
 }
 
 function renderEventsPage(options: AdminLayoutOptions): string {
   return renderSectionShell(
     'Manual Event Emit',
     'Publish an event into the configured event bus to exercise the live achievement logic.',
-    `<form method="post" action="/admin/events/emit" class="row g-3">
-      <div class="col-12 col-lg-4">
-        <label class="form-label">topic</label>
-        <input class="form-control form-control-sm font-monospace" name="topic" placeholder="flashcard.review" required />
+    `<div class="row g-4">
+      <div class="col-12">
+        <form method="post" action="/admin/events/emit" class="row g-3">
+          <div class="col-12 col-lg-4">
+            <label class="form-label fw-semibold">Topic</label>
+            <input class="form-control form-control-sm font-monospace" name="topic" placeholder="flashcard.review" required />
+            <div class="form-text">Enter the exact event-bus topic consumed by the achievement service.</div>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Payload JSON</label>
+            <textarea class="form-control form-control-sm font-monospace" name="payload_json" rows="14" placeholder='{"userid":"8","username":"vivian","event_name":"flashcard.review"}' required></textarea>
+          </div>
+          <div class="col-12 d-flex justify-content-end gap-2">
+            <button type="submit" formaction="/admin/subscriptions/refresh" class="btn btn-outline-secondary btn-sm" title="Refresh subscriptions" aria-label="Refresh subscriptions">
+              <i class="bi bi-arrow-clockwise"></i>
+            </button>
+            <button type="submit" class="btn btn-primary btn-sm" title="Emit event" aria-label="Emit event">
+              <i class="bi bi-send-fill"></i>
+            </button>
+          </div>
+        </form>
       </div>
-      <div class="col-12 col-lg-8">
-        <label class="form-label">payload_json</label>
-        <textarea class="form-control form-control-sm font-monospace" name="payload_json" rows="6" placeholder='{"userid":"8","username":"vivian","event_name":"flashcard.review"}' required></textarea>
-      </div>
-      <div class="col-12 d-flex justify-content-end gap-2">
-        ${iconButton({ label: 'Refresh subscriptions', icon: 'arrow-clockwise', tone: 'secondary', formaction: '/admin/subscriptions/refresh' })}
-        ${iconButton({ label: 'Emit event', icon: 'send-fill' })}
-      </div>
-    </form>`,
+    </div>`,
     options
   );
 }
@@ -399,8 +436,8 @@ function renderAchievementsPage(result: AdminPageResult<AdminAchievementRow>, st
       <a class="btn btn-sm btn-primary" href="/admin/achievements/new" title="Add achievement" aria-label="Add achievement"><i class="bi bi-plus-lg"></i></a>
     </div>
     ${renderFilterToolbar('/admin/achievements', state, result.total)}
-    <div class="table-responsive">
-      <table class="table table-sm align-middle">
+    <div class="table-wrapper">
+      <table>
         <thead class="sticky-header"><tr><th>id</th><th>code</th><th>event_name</th><th>icon_name</th><th>points</th><th>goal</th><th>actions</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -434,8 +471,8 @@ function renderTranslationsPage(result: AdminPageResult<AdminTranslationRow>, st
       <a class="btn btn-sm btn-primary" href="/admin/translations/new" title="Add translation" aria-label="Add translation"><i class="bi bi-plus-lg"></i></a>
     </div>
     ${renderFilterToolbar('/admin/translations', state, result.total)}
-    <div class="table-responsive">
-      <table class="table table-sm align-middle">
+    <div class="table-wrapper">
+      <table>
         <thead class="sticky-header"><tr><th>id</th><th>achievement_id</th><th>locale</th><th>title</th><th>description</th><th>actions</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -470,8 +507,8 @@ function renderEventListsPage(result: AdminPageResult<AdminEventListRow>, state:
       <a class="btn btn-sm btn-primary" href="/admin/event-lists/new" title="Add event list row" aria-label="Add event list row"><i class="bi bi-plus-lg"></i></a>
     </div>
     ${renderFilterToolbar('/admin/event-lists', state, result.total)}
-    <div class="table-responsive">
-      <table class="table table-sm align-middle">
+    <div class="table-wrapper">
+      <table>
         <thead class="sticky-header"><tr><th>id</th><th>event_name</th><th>points</th><th>actions</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -504,8 +541,8 @@ function renderUserAchievementsPage(result: AdminPageResult<AdminUserAchievement
     'User Achievements',
     'Query and edit rows stored in as_user_achievements.',
     `${renderFilterToolbar('/admin/user-achievements', state, result.total)}
-    <div class="table-responsive">
-      <table class="table table-sm align-middle">
+    <div class="table-wrapper">
+      <table>
         <thead class="sticky-header"><tr><th>id</th><th>userid</th><th>username</th><th>achievement_id</th><th>progress</th><th>achieved</th><th>achieved_at</th><th>actions</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -534,8 +571,8 @@ function renderEventLogsPage(result: AdminPageResult<AdminEventLogRow>, state: P
     'Event Logs',
     'Latest event-bus messages persisted in as_event_logs.',
     `${renderFilterToolbar('/admin/event-logs', state, result.total)}
-    <div class="table-responsive">
-      <table class="table table-sm align-middle">
+    <div class="table-wrapper">
+      <table>
         <thead class="sticky-header"><tr><th>id</th><th>event_name</th><th>userid</th><th>username</th><th>received_at</th><th>payload_json</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -567,8 +604,8 @@ function renderChangeLogsPage(result: AdminPageResult<AdminAchievementChangeLogR
     'Change Logs',
     'Per-achievement progress changes persisted for each handled event.',
     `${renderFilterToolbar('/admin/change-logs', state, result.total)}
-    <div class="table-responsive">
-      <table class="table table-sm align-middle">
+    <div class="table-wrapper">
+      <table>
         <thead class="sticky-header"><tr><th>id</th><th>event_log_id</th><th>achievement_id</th><th>user_achievement_id</th><th>event_name</th><th>userid</th><th>username</th><th>points_added</th><th>progress_before</th><th>progress_after</th><th>achieved_before</th><th>achieved_after</th><th>achieved_at</th><th>created_at</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
