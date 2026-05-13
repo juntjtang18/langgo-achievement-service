@@ -7,6 +7,7 @@ import {
   AdminRepository,
   type AdminAchievementRow,
   type AdminAchievementChangeLogRow,
+  type AdminDashboardData,
   type AdminEventListRow,
   type AdminEventLogRow,
   type AdminPageQuery,
@@ -18,16 +19,23 @@ import { AdminAuthService } from '../services/adminAuthService';
 import { EventSubscriberService } from '../services/eventSubscriberService';
 
 const SESSION_COOKIE = 'achievement_admin_session';
-const DEFAULT_ADMIN_PATH = '/admin/events';
+const DEFAULT_ADMIN_PATH = '/admin/dashboard';
 const DEFAULT_PAGE_SIZE = 20;
 
-type AdminSection = 'events' | 'achievements' | 'translations' | 'event-lists' | 'user-achievements' | 'event-logs' | 'change-logs';
+type AdminSection = 'dashboard' | 'events' | 'achievements' | 'translations' | 'event-lists' | 'user-achievements' | 'event-logs' | 'change-logs';
 
 interface AdminLayoutOptions {
   notice?: string | null;
   error?: string | null;
   userEmail?: string | null;
   activeSection?: AdminSection;
+}
+
+interface AdminEventTestState {
+  eventLogs: AdminEventLogRow[];
+  userAchievements: AdminUserAchievementRow[];
+  changeLogs: AdminAchievementChangeLogRow[];
+  counts: Array<{ label: string; count: number }>;
 }
 
 interface PageState {
@@ -43,6 +51,15 @@ function escapeHtml(value: unknown): string {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+
+function serializeForInlineScript(value: unknown): string {
+  return JSON.stringify(value)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
 }
 
 function parseCookies(req: Request): Record<string, string> {
@@ -191,6 +208,29 @@ function normalizeManualEventPayload(topic: string, payload: Record<string, unkn
   };
 }
 
+async function captureEventTestState(
+  repository: AdminRepository,
+  userid: string | null
+): Promise<AdminEventTestState> {
+  const userWhere = userid ? `userid = '${escapeSqlLiteral(userid)}'` : null;
+  const [eventLogs, userAchievements, changeLogs] = await Promise.all([
+    repository.listEventLogs({ page: 1, pageSize: 1, whereClause: userWhere }),
+    repository.listUserAchievements({ page: 1, pageSize: 1, whereClause: userWhere }),
+    repository.listAchievementChangeLogs({ page: 1, pageSize: 1, whereClause: userWhere }),
+  ]);
+
+  return {
+    eventLogs: eventLogs.rows,
+    userAchievements: userAchievements.rows,
+    changeLogs: changeLogs.rows,
+    counts: [
+      { label: 'Event Logs', count: eventLogs.total },
+      { label: 'User Achievements', count: userAchievements.total },
+      { label: 'Change Logs', count: changeLogs.total },
+    ],
+  };
+}
+
 function renderLayout(title: string, content: string, options: AdminLayoutOptions = {}): string {
   const notice = options.notice ? `<div class="alert alert-success" role="alert">${escapeHtml(options.notice)}</div>` : '';
   const error = options.error ? `<div class="alert alert-danger" role="alert">${escapeHtml(options.error)}</div>` : '';
@@ -198,6 +238,7 @@ function renderLayout(title: string, content: string, options: AdminLayoutOption
     <aside class="sidebar">
       <div class="sidebar-group-label">Actions</div>
       <nav class="sidebar-nav">
+          ${navLink('dashboard', '/admin/dashboard', 'Dashboard', options.activeSection)}
           ${navLink('events', '/admin/events', 'Manual Event Emit', options.activeSection)}
       </nav>
       <div class="sidebar-group-label">Entities</div>
@@ -379,7 +420,115 @@ function renderFilterToolbar(path: string, state: PageState, total: number): str
     </form>`;
 }
 
-function renderEventsPage(options: AdminLayoutOptions): string {
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function escapeSqlLiteral(value: string): string {
+  return value.replaceAll("'", "''");
+}
+
+function renderStateBlock(title: string, rows: unknown[]): string {
+  return `
+    <div class="col-12 col-xl-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h3 class="h6">${escapeHtml(title)}</h3>
+          <pre class="small font-monospace mb-0">${escapeHtml(JSON.stringify(rows, null, 2))}</pre>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderCountDiff(before: AdminEventTestState, after: AdminEventTestState): string {
+  const rows = after.counts.map((entry, index) => {
+    const previous = before.counts[index]?.count ?? 0;
+    const delta = entry.count - previous;
+    return `<tr>
+      <td>${escapeHtml(entry.label)}</td>
+      <td>${previous}</td>
+      <td>${entry.count}</td>
+      <td class="${delta === 0 ? 'text-secondary' : delta > 0 ? 'text-success' : 'text-danger'}">${delta >= 0 ? '+' : ''}${delta}</td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <h2 class="h5 mb-3">Entity Count Changes</h2>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>Entity</th><th>Before</th><th>After</th><th>Delta</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>`;
+}
+
+function buildAchievementEventPresetScript(eventNames: string[]): string {
+  return `
+const buildAchievementEventPresets = () => {
+  const userid = '8';
+  const username = 'vivian';
+  const eventNames = ${JSON.stringify(eventNames)};
+  return Object.fromEntries(eventNames.map((eventName) => [eventName, {
+    event_name: eventName,
+    userid,
+    username
+  }]));
+};
+const achievementTopicEl = document.getElementById('achievement-event-topic');
+const achievementPayloadEl = document.getElementById('achievement-event-payload');
+const loadAchievementPreset = () => {
+  const presets = buildAchievementEventPresets();
+  const next = presets[achievementTopicEl.value];
+  if (next) {
+    achievementPayloadEl.value = JSON.stringify(next, null, 2);
+  }
+};
+achievementTopicEl?.addEventListener('change', loadAchievementPreset);
+if (achievementTopicEl && achievementPayloadEl && achievementPayloadEl.value.trim() === '') {
+  loadAchievementPreset();
+}
+`;
+}
+
+function renderEventsPage(
+  options: AdminLayoutOptions,
+  eventNames: string[],
+  payloadText = '',
+  result: {
+    topic: string;
+    ack: Record<string, unknown> | null;
+    before: AdminEventTestState;
+    after: AdminEventTestState;
+  } | null = null
+): string {
+  const selectedTopic = result?.topic ?? eventNames[0] ?? '';
+  const topicOptions = eventNames.map((eventName) => `<option value="${escapeHtml(eventName)}" ${selectedTopic === eventName ? 'selected' : ''}>${escapeHtml(eventName)}</option>`).join('');
+  const changesSection = result ? `
+    <div class="mt-4">
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+          <h2 class="h5 mb-3">Emit Result</h2>
+          <dl class="row mb-0 small">
+            <dt class="col-sm-3">Topic</dt><dd class="col-sm-9 font-monospace">${escapeHtml(result.topic)}</dd>
+            <dt class="col-sm-3">Publish Ack</dt><dd class="col-sm-9"><pre class="small font-monospace mb-0">${escapeHtml(JSON.stringify(result.ack, null, 2))}</pre></dd>
+          </dl>
+        </div>
+      </div>
+      ${renderCountDiff(result.before, result.after)}
+      <div class="row g-3">
+        ${renderStateBlock('Event Logs Before', result.before.eventLogs)}
+        ${renderStateBlock('Event Logs After', result.after.eventLogs)}
+        ${renderStateBlock('User Achievements Before', result.before.userAchievements)}
+        ${renderStateBlock('User Achievements After', result.after.userAchievements)}
+        ${renderStateBlock('Change Logs Before', result.before.changeLogs)}
+        ${renderStateBlock('Change Logs After', result.after.changeLogs)}
+      </div>
+    </div>` : '';
+
   return renderSectionShell(
     'Manual Event Emit',
     'Publish an event into the configured event bus to exercise the live achievement logic.',
@@ -388,16 +537,21 @@ function renderEventsPage(options: AdminLayoutOptions): string {
         <form method="post" action="/admin/events/emit" class="row g-3">
           <div class="col-12 col-lg-4">
             <label class="form-label fw-semibold">Topic</label>
-            <input class="form-control form-control-sm font-monospace" name="topic" placeholder="flashcard.review" required />
-            <div class="form-text">Enter the exact event-bus topic consumed by the achievement service.</div>
+            <select class="form-select form-select-sm font-monospace" id="achievement-event-topic" name="topic">
+              ${topicOptions}
+            </select>
+            <div class="form-text">Achievement manual emit uses the simple payload schema: <code>event_name</code>, <code>userid</code>, and <code>username</code>.</div>
           </div>
           <div class="col-12">
             <label class="form-label fw-semibold">Payload JSON</label>
-            <textarea class="form-control form-control-sm font-monospace" name="payload_json" rows="14" placeholder='{"userid":"8","username":"vivian","event_name":"flashcard.review"}' required></textarea>
+            <textarea class="form-control form-control-sm font-monospace" id="achievement-event-payload" name="payload_json" rows="14" placeholder='{"userid":"8","username":"vivian","event_name":"flashcard.review"}' required>${escapeHtml(payloadText)}</textarea>
           </div>
           <div class="col-12 d-flex justify-content-end gap-2">
             <button type="submit" formaction="/admin/subscriptions/refresh" class="btn btn-outline-secondary btn-sm" title="Refresh subscriptions" aria-label="Refresh subscriptions">
               <i class="bi bi-arrow-clockwise"></i>
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" title="Clear payload" aria-label="Clear payload" onclick="document.getElementById('achievement-event-payload').value='';">
+              <i class="bi bi-eraser"></i>
             </button>
             <button type="submit" class="btn btn-primary btn-sm" title="Emit event" aria-label="Emit event">
               <i class="bi bi-send-fill"></i>
@@ -405,7 +559,164 @@ function renderEventsPage(options: AdminLayoutOptions): string {
           </div>
         </form>
       </div>
-    </div>`,
+    </div>
+    ${changesSection}
+    <script>${buildAchievementEventPresetScript(eventNames)}</script>`,
+    options
+  );
+}
+
+function renderDashboardPage(options: AdminLayoutOptions, data: AdminDashboardData): string {
+  const totals = [
+    { label: 'Event Logs', value: data.totals.events, tone: 'text-primary' },
+    { label: 'Users', value: data.totals.users, tone: 'text-success' },
+    { label: 'User Achievements', value: data.totals.userAchievements, tone: 'text-warning' },
+    { label: 'Achievements', value: data.totals.achievementDefinitions, tone: 'text-danger' },
+  ];
+
+  const cards = totals.map((item) => `
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-secondary small text-uppercase fw-semibold mb-2">${escapeHtml(item.label)}</div>
+          <div class="fs-2 fw-bold ${item.tone}">${item.value}</div>
+        </div>
+      </div>
+    </div>`).join('');
+
+  const topUserRows = data.topUsers.map((row, index) => `
+    <tr>
+      <td>${index + 1}</td>
+      <td>${escapeHtml(row.userid)}</td>
+      <td>${escapeHtml(row.username ?? '')}</td>
+      <td>${row.count}</td>
+    </tr>`).join('');
+
+  const chartData = serializeForInlineScript(data);
+
+  return renderLayout(
+    'Dashboard',
+    `<div class="card-header-inline">
+      <div>
+        <h1 class="h3 mb-1">Dashboard</h1>
+        <p class="text-secondary mb-0">Achievement event activity overview from the live service.</p>
+      </div>
+    </div>
+    <div class="row g-3 mb-4">
+      ${cards}
+    </div>
+    <div class="row g-4">
+      <div class="col-12 col-xl-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <h2 class="h5 mb-1">Event Graph</h2>
+            <p class="text-secondary small mb-3">X-axis: date. Y-axis: event count. Window: up to 120 days.</p>
+            <canvas id="daily-events-chart" height="120"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-xl-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <h2 class="h5 mb-3">Daily Points Added</h2>
+            <canvas id="daily-points-chart" height="120"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-xl-7">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <h2 class="h5 mb-3">Events by Type</h2>
+            <canvas id="event-types-chart" height="140"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-xl-5">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <h2 class="h5 mb-3">Top Users by Event Count</h2>
+            <div class="table-responsive">
+              <table class="table table-sm mb-0">
+                <thead><tr><th>#</th><th>User ID</th><th>Username</th><th>Events</th></tr></thead>
+                <tbody>${topUserRows || '<tr><td colspan="4" class="text-secondary">No data</td></tr>'}</tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script>
+      const dashboardData = ${chartData};
+      const chartFontColor = '#374151';
+      const gridColor = 'rgba(209, 213, 219, 0.7)';
+
+      const buildLineChart = (id, labels, values, label, color) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        new Chart(el, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [{
+              label,
+              data: values,
+              borderColor: color,
+              backgroundColor: color + '22',
+              fill: true,
+              tension: 0.25,
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { ticks: { color: chartFontColor }, grid: { color: gridColor } },
+              y: { beginAtZero: true, ticks: { color: chartFontColor }, grid: { color: gridColor } }
+            }
+          }
+        });
+      };
+
+      buildLineChart(
+        'daily-events-chart',
+        dashboardData.dailyEvents.map((row) => row.day),
+        dashboardData.dailyEvents.map((row) => row.count),
+        'Events',
+        '#2563eb'
+      );
+
+      buildLineChart(
+        'daily-points-chart',
+        dashboardData.dailyPoints.map((row) => row.day),
+        dashboardData.dailyPoints.map((row) => row.points),
+        'Points Added',
+        '#d97706'
+      );
+
+      const eventTypesEl = document.getElementById('event-types-chart');
+      if (eventTypesEl) {
+        new Chart(eventTypesEl, {
+          type: 'bar',
+          data: {
+            labels: dashboardData.eventTypeCounts.map((row) => row.event_name),
+            datasets: [{
+              data: dashboardData.eventTypeCounts.map((row) => row.count),
+              backgroundColor: ['#2563eb', '#059669', '#d97706', '#dc2626', '#7c3aed', '#0891b2', '#4b5563'],
+              borderRadius: 6,
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { ticks: { color: chartFontColor }, grid: { display: false } },
+              y: { beginAtZero: true, ticks: { color: chartFontColor }, grid: { color: gridColor } }
+            }
+          }
+        });
+      }
+    </script>`,
     options
   );
 }
@@ -725,8 +1036,26 @@ export function createAdminRouter(deps: AdminRouterDependencies): Router {
     res.redirect(DEFAULT_ADMIN_PATH);
   });
 
+  router.get('/dashboard', async (req, res) => {
+    try {
+      const data = await deps.repository.getDashboardData();
+      res.type('html').send(renderDashboardPage(pageOptions(req, res.locals.adminSession.email, 'dashboard'), data));
+    } catch (error) {
+      deps.logger.error({ err: error }, 'failed to render achievement dashboard');
+      redirectWithNotice(res, DEFAULT_ADMIN_PATH, 'error', error instanceof Error ? error.message : 'Failed to load dashboard.');
+    }
+  });
+
   router.get('/events', (req, res) => {
-    res.type('html').send(renderEventsPage(pageOptions(req, res.locals.adminSession.email, 'events')));
+    void (async () => {
+      try {
+        const eventNames = await deps.repository.listAllEventNames();
+        res.type('html').send(renderEventsPage(pageOptions(req, res.locals.adminSession.email, 'events'), eventNames));
+      } catch (error) {
+        deps.logger.error({ err: error }, 'failed to render manual event page');
+        redirectWithNotice(res, '/admin/events', 'error', error instanceof Error ? error.message : 'Failed to load manual event page.');
+      }
+    })();
   });
 
   router.get('/achievements', async (req, res) => {
@@ -819,10 +1148,35 @@ export function createAdminRouter(deps: AdminRouterDependencies): Router {
 
   router.post('/events/emit', async (req, res) => {
     try {
+      const eventNames = await deps.repository.listAllEventNames();
       const topic = readRequiredString(req.body, 'topic');
-      const payload = normalizeManualEventPayload(topic, JSON.parse(readRequiredString(req.body, 'payload_json')));
+      const payloadText = readRequiredString(req.body, 'payload_json');
+      const payload = normalizeManualEventPayload(topic, JSON.parse(payloadText));
+      const userid = typeof payload.userid === 'string' && payload.userid.trim() !== '' ? payload.userid.trim() : null;
+      const before = await captureEventTestState(deps.repository, userid);
       const ack = await deps.eventBus.publish(topic, payload);
-      redirectWithNotice(res, '/admin/events', 'notice', `Event published to ${ack.topic} at ${ack.publishedAt}.`);
+
+      let after = before;
+      const beforeEventLogCount = before.counts[0]?.count ?? 0;
+      for (let attempt = 0; attempt < 10; attempt += 1) {
+        await wait(200);
+        after = await captureEventTestState(deps.repository, userid);
+        if ((after.counts[0]?.count ?? 0) > beforeEventLogCount) {
+          break;
+        }
+      }
+
+      res.type('html').send(renderEventsPage(
+        pageOptions(req, res.locals.adminSession.email, 'events'),
+        eventNames,
+        payloadText,
+        {
+          topic,
+          ack,
+          before,
+          after,
+        }
+      ));
     } catch (error) {
       deps.logger.error({ err: error }, 'failed to emit manual event');
       redirectWithNotice(res, '/admin/events', 'error', error instanceof Error ? error.message : 'Failed to emit event.');

@@ -73,6 +73,19 @@ export interface AdminAchievementChangeLogRow {
   created_at: string;
 }
 
+export interface AdminDashboardData {
+  totals: {
+    events: number;
+    users: number;
+    userAchievements: number;
+    achievementDefinitions: number;
+  };
+  dailyEvents: Array<{ day: string; count: number }>;
+  eventTypeCounts: Array<{ event_name: string; count: number }>;
+  dailyPoints: Array<{ day: string; points: number }>;
+  topUsers: Array<{ userid: string; username: string | null; count: number }>;
+}
+
 function sanitizeWhereClause(whereClause: string | null): string {
   if (!whereClause) {
     return '';
@@ -134,6 +147,18 @@ export class AdminRepository {
     });
   }
 
+  async listAllEventNames(): Promise<string[]> {
+    const result = await this.db.query<{ event_name: string }>(
+      `SELECT event_name
+       FROM ${this.eventListsTable}
+       ORDER BY id ASC`
+    );
+
+    return result.rows
+      .map((row) => row.event_name?.trim())
+      .filter((value): value is string => Boolean(value));
+  }
+
   async listUserAchievements(query: AdminPageQuery): Promise<AdminPageResult<AdminUserAchievementRow>> {
     return this.listPage<AdminUserAchievementRow>({
       table: this.userAchievementsTable,
@@ -161,6 +186,67 @@ export class AdminRepository {
       orderBy: 'created_at DESC, id DESC',
       query,
     });
+  }
+
+  async getDashboardData(): Promise<AdminDashboardData> {
+    const [totals, dailyEvents, eventTypeCounts, dailyPoints, topUsers] = await Promise.all([
+      this.db.query<{
+        events: string;
+        users: string;
+        user_achievements: string;
+        achievement_definitions: string;
+      }>(
+        `SELECT
+           (SELECT COUNT(*)::text FROM ${this.eventLogsTable}) AS events,
+           (SELECT COUNT(DISTINCT userid)::text FROM ${this.eventLogsTable} WHERE userid IS NOT NULL AND userid <> '') AS users,
+           (SELECT COUNT(*)::text FROM ${this.userAchievementsTable}) AS user_achievements,
+           (SELECT COUNT(*)::text FROM ${this.achievementsTable}) AS achievement_definitions`
+      ),
+      this.db.query<{ day: string; count: string }>(
+        `SELECT received_at::date::text AS day, COUNT(*)::text AS count
+         FROM ${this.eventLogsTable}
+         WHERE received_at >= CURRENT_DATE - INTERVAL '119 days'
+         GROUP BY received_at::date
+         ORDER BY received_at::date ASC`
+      ),
+      this.db.query<{ event_name: string; count: string }>(
+        `SELECT event_name, COUNT(*)::text AS count
+         FROM ${this.eventLogsTable}
+         WHERE received_at >= CURRENT_DATE - INTERVAL '119 days'
+         GROUP BY event_name
+         ORDER BY COUNT(*) DESC, event_name ASC`
+      ),
+      this.db.query<{ day: string; points: string }>(
+        `SELECT created_at::date::text AS day, COALESCE(SUM(points_added), 0)::text AS points
+         FROM ${this.changeLogsTable}
+         WHERE created_at >= CURRENT_DATE - INTERVAL '119 days'
+         GROUP BY created_at::date
+         ORDER BY created_at::date ASC`
+      ),
+      this.db.query<{ userid: string; username: string | null; count: string }>(
+        `SELECT userid, MAX(username) AS username, COUNT(*)::text AS count
+         FROM ${this.eventLogsTable}
+         WHERE received_at >= CURRENT_DATE - INTERVAL '119 days'
+           AND userid IS NOT NULL
+           AND userid <> ''
+         GROUP BY userid
+         ORDER BY COUNT(*) DESC, userid ASC
+         LIMIT 8`
+      ),
+    ]);
+
+    return {
+      totals: {
+        events: Number(totals.rows[0]?.events ?? '0'),
+        users: Number(totals.rows[0]?.users ?? '0'),
+        userAchievements: Number(totals.rows[0]?.user_achievements ?? '0'),
+        achievementDefinitions: Number(totals.rows[0]?.achievement_definitions ?? '0'),
+      },
+      dailyEvents: dailyEvents.rows.map((row) => ({ day: row.day, count: Number(row.count) })),
+      eventTypeCounts: eventTypeCounts.rows.map((row) => ({ event_name: row.event_name, count: Number(row.count) })),
+      dailyPoints: dailyPoints.rows.map((row) => ({ day: row.day, points: Number(row.points) })),
+      topUsers: topUsers.rows.map((row) => ({ userid: row.userid, username: row.username, count: Number(row.count) })),
+    };
   }
 
   async createAchievement(input: Omit<AdminAchievementRow, 'id'>): Promise<void> {
