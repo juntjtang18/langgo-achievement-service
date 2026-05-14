@@ -179,6 +179,8 @@ describe('http routes', () => {
 
     expect(response.status).toBe(200);
     expect(response.text).toContain('API Docs');
+    expect(response.text).toContain('API Version');
+    expect(response.text).toContain('/admin/api-docs/openapi/');
     expect(response.text).toContain('swagger-ui');
   });
 
@@ -186,11 +188,12 @@ describe('http routes', () => {
     const app = createTestApp();
 
     const response = await request(app)
-      .get('/admin/api-docs/openapi.json')
+      .get('/admin/api-docs/openapi/v1.json')
       .set('Cookie', 'achievement_admin_session=valid-session');
 
     expect(response.status).toBe(200);
     expect(response.body.openapi).toBe('3.0.3');
+    expect(response.body.info.version).toBe('v1');
     expect(response.body.paths['/api/v1/achievements-achieved']).toBeTruthy();
   });
 

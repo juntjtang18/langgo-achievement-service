@@ -105,7 +105,7 @@ The admin login form authenticates against `STRAPI_ADMIN_URL`, verifies the Stra
 
 The admin page also includes a manual event publisher that sends JSON payloads through the configured event bus so you can test the live achievement logic.
 
-The admin UI also includes an interactive Swagger page at `/admin/api-docs` for the exposed HTTP endpoints. It uses the authenticated admin session to proxy requests server-side, so `x-internal-key` stays out of the browser while `Try it out` still works. Caller-scoped endpoints still expect `x-user-id`.
+The admin UI also includes an interactive Swagger page at `/admin/api-docs` for the exposed HTTP endpoints. It includes an API version selector, currently listing `v1`, and serves versioned OpenAPI JSON at `/admin/api-docs/openapi/v1.json`. It uses the authenticated admin session to proxy requests server-side, so `x-internal-key` stays out of the browser while `Try it out` still works. Caller-scoped endpoints still expect `x-user-id`.
 Manual emit uses one event schema only: `userid`, `username`, and `event_name`.
 
 Admin table pages use Bootstrap styling and are route-based:

@@ -23,6 +23,8 @@ import { registerApiRoutes } from '../api/v1/routes';
 const SESSION_COOKIE = 'achievement_admin_session';
 const DEFAULT_ADMIN_PATH = '/admin/dashboard';
 const DEFAULT_PAGE_SIZE = 20;
+const API_DOC_VERSIONS = ['v1'] as const;
+type ApiDocVersion = typeof API_DOC_VERSIONS[number];
 
 type AdminSection = 'dashboard' | 'events' | 'api-docs' | 'achievements' | 'translations' | 'event-lists' | 'user-achievements' | 'event-logs' | 'change-logs';
 
@@ -365,13 +367,17 @@ function renderSectionShell(title: string, description: string, body: string, op
   );
 }
 
-function buildOpenApiDocument(): Record<string, unknown> {
+function isApiDocVersion(value: string): value is ApiDocVersion {
+  return (API_DOC_VERSIONS as readonly string[]).includes(value);
+}
+
+function buildOpenApiDocument(version: ApiDocVersion): Record<string, unknown> {
   return {
     openapi: '3.0.3',
     info: {
       title: 'LangGo Achievement Server API',
-      version: '0.1.0',
-      description: 'Interactive admin-authenticated API documentation for the exposed achievement endpoints.',
+      version,
+      description: `Interactive admin-authenticated API documentation for the exposed achievement ${version} endpoints.`,
     },
     servers: [
       {
@@ -491,10 +497,17 @@ function buildOpenApiDocument(): Record<string, unknown> {
 }
 
 function renderSwaggerPage(options: AdminLayoutOptions): string {
+  const versionOptions = API_DOC_VERSIONS.map((version) => `<option value="${escapeHtml(version)}">${escapeHtml(version)}</option>`).join('');
   return renderSectionShell(
     'API Docs',
     'Swagger UI for the exposed achievement endpoints. Requests run through an admin-authenticated proxy so the internal key stays server-side.',
-    `<p class="small text-secondary mb-3">For the caller-scoped endpoints, fill in <code>x-user-id</code> in the request headers before running the call.</p>
+    `<div class="d-flex justify-content-end align-items-center gap-2 mb-3">
+      <label class="form-label mb-0 small fw-semibold" for="api-doc-version">API Version</label>
+      <select class="form-select form-select-sm font-monospace" id="api-doc-version" style="width: 120px;">
+        ${versionOptions}
+      </select>
+    </div>
+    <p class="small text-secondary mb-3">For the caller-scoped endpoints, fill in <code>x-user-id</code> in the request headers before running the call.</p>
     <div id="swagger-ui"></div>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css">
     <style>
@@ -503,13 +516,18 @@ function renderSwaggerPage(options: AdminLayoutOptions): string {
     </style>
     <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
     <script>
-      window.ui = SwaggerUIBundle({
-        url: '/admin/api-docs/openapi.json',
-        dom_id: '#swagger-ui',
-        deepLinking: true,
-        displayRequestDuration: true,
-        persistAuthorization: false,
-      });
+      const apiDocVersionSelect = document.getElementById('api-doc-version');
+      const loadApiDocs = (version) => {
+        window.ui = SwaggerUIBundle({
+          url: '/admin/api-docs/openapi/' + encodeURIComponent(version) + '.json',
+          dom_id: '#swagger-ui',
+          deepLinking: true,
+          displayRequestDuration: true,
+          persistAuthorization: false,
+        });
+      };
+      apiDocVersionSelect?.addEventListener('change', () => loadApiDocs(apiDocVersionSelect.value));
+      loadApiDocs(apiDocVersionSelect?.value || 'v1');
     </script>`,
     { ...options, activeSection: 'api-docs' }
   );
@@ -1189,8 +1207,13 @@ export function createAdminRouter(deps: AdminRouterDependencies): Router {
     res.type('html').send(renderSwaggerPage(pageOptions(req, res.locals.adminSession.email, 'api-docs')));
   });
 
-  router.get('/api-docs/openapi.json', (_req, res) => {
-    res.json(buildOpenApiDocument());
+  router.get('/api-docs/openapi/:version.json', (req, res) => {
+    const version = String(req.params.version);
+    if (!isApiDocVersion(version)) {
+      res.status(404).json({ error: 'API doc version not found' });
+      return;
+    }
+    res.json(buildOpenApiDocument(version));
   });
 
   const apiDocsProxyRouter = express.Router();
