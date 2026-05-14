@@ -222,7 +222,7 @@ describeIfIntegration('achievement event bus integration', () => {
     expect(Number(eventLogs.rows[0]?.count ?? '0')).toBe(5);
 
     const achievedResponse = await request(app)
-      .get('/achievements-achieved?locale=zh-Hans')
+      .get('/api/v1/achievements-achieved?locale=zh-Hans')
       .set('x-internal-key', 'test-key')
       .set('x-user-id', '8');
 
@@ -235,7 +235,7 @@ describeIfIntegration('achievement event bus integration', () => {
     ]);
 
     const notAchievedResponse = await request(app)
-      .get('/achievements-not-achieved?locale=en')
+      .get('/api/v1/achievements-not-achieved?locale=en')
       .set('x-internal-key', 'test-key')
       .set('x-user-id', '8');
 

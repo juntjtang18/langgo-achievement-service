@@ -1,6 +1,6 @@
 
 
-curl --location 'https://achievement-service-852311377699.us-west1.run.app/achievements-achieved?locale=en' \
+curl --location 'https://achievement-service-852311377699.us-west1.run.app/api/v1/achievements-achieved?locale=en' \
   --header 'x-internal-key: achievement-internal-key-20260510' \
   --header 'x-user-id: 60'
 

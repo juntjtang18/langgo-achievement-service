@@ -1,14 +1,14 @@
 import express from 'express';
 import pinoHttp from 'pino-http';
 import type { Logger } from 'pino';
-import { createInternalKeyMiddleware } from './http/auth';
-import { createAdminRouter } from './http/adminRouter';
-import { createRouter } from './http/routes';
-import { AdminRepository } from './repositories/adminRepository';
-import { AchievementService } from './services/achievementService';
-import { AdminAuthService } from './services/adminAuthService';
-import { EventSubscriberService } from './services/eventSubscriberService';
-import type { EventBus } from './types';
+import { createInternalKeyMiddleware } from './auth';
+import { createAdminRouter } from './adminRouter';
+import { createRouter } from '../api/v1/routes';
+import { AdminRepository } from '../repositories/adminRepository';
+import { AchievementService } from '../services/achievementService';
+import { AdminAuthService } from '../services/adminAuthService';
+import { EventSubscriberService } from '../services/eventSubscriberService';
+import type { EventBus } from '../types';
 
 interface CreateAppOptions {
   achievementService: AchievementService;
@@ -36,8 +36,7 @@ export function createApp(options: CreateAppOptions) {
     internalKey: options.internalKey,
     achievementService: options.achievementService,
   }));
-  app.use(createInternalKeyMiddleware(options.internalKey));
-  app.use(createRouter(options.achievementService));
+  app.use('/api/v1', createInternalKeyMiddleware(options.internalKey), createRouter(options.achievementService));
 
   app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     const message = error instanceof Error ? error.message : 'Internal Server Error';

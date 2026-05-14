@@ -1,5 +1,5 @@
 import { Router, type Request, type Response, type Router as ExpressRouter } from 'express';
-import { AchievementService } from '../services/achievementService';
+import { AchievementService } from '../../services/achievementService';
 
 export function readUserContext(req: Request): { userId: string; locale: string } {
   const userId = req.header('x-user-id');

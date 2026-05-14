@@ -62,7 +62,7 @@ describe('http routes', () => {
     const app = createTestApp();
 
     const response = await request(app)
-      .get('/achievements-achieved')
+      .get('/api/v1/achievements-achieved')
       .set('x-user-id', '8');
 
     expect(response.status).toBe(401);
@@ -72,7 +72,7 @@ describe('http routes', () => {
     const app = createTestApp();
 
     const response = await request(app)
-      .get('/achievements-not-achieved?locale=en')
+      .get('/api/v1/achievements-not-achieved?locale=en')
       .set('x-internal-key', 'secret')
       .set('x-user-id', '8');
 
@@ -191,14 +191,14 @@ describe('http routes', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.openapi).toBe('3.0.3');
-    expect(response.body.paths['/achievements-achieved']).toBeTruthy();
+    expect(response.body.paths['/api/v1/achievements-achieved']).toBeTruthy();
   });
 
   it('allows authenticated admin docs proxy requests without the internal key header', async () => {
     const app = createTestApp();
 
     const response = await request(app)
-      .get('/admin/api-docs/proxy/achievements-not-achieved?locale=en')
+      .get('/admin/api-docs/proxy/api/v1/achievements-not-achieved?locale=en')
       .set('Cookie', 'achievement_admin_session=valid-session')
       .set('x-user-id', '8');
 

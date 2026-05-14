@@ -18,7 +18,7 @@ import {
 import { AdminAuthService } from '../services/adminAuthService';
 import { AchievementService } from '../services/achievementService';
 import { EventSubscriberService } from '../services/eventSubscriberService';
-import { registerApiRoutes } from './routes';
+import { registerApiRoutes } from '../api/v1/routes';
 
 const SESSION_COOKIE = 'achievement_admin_session';
 const DEFAULT_ADMIN_PATH = '/admin/dashboard';
@@ -384,7 +384,7 @@ function buildOpenApiDocument(): Record<string, unknown> {
       { name: 'Achievements' },
     ],
     paths: {
-      '/healthz': {
+      '/api/v1/healthz': {
         get: {
           tags: ['Health'],
           summary: 'Health check',
@@ -406,7 +406,7 @@ function buildOpenApiDocument(): Record<string, unknown> {
           },
         },
       },
-      '/achievements-achieved': {
+      '/api/v1/achievements-achieved': {
         get: {
           tags: ['Achievements'],
           summary: 'List achieved achievements for the caller',
@@ -446,7 +446,7 @@ function buildOpenApiDocument(): Record<string, unknown> {
           },
         },
       },
-      '/achievements-not-achieved': {
+      '/api/v1/achievements-not-achieved': {
         get: {
           tags: ['Achievements'],
           summary: 'List not-yet-achieved achievements for the caller',
@@ -1195,7 +1195,7 @@ export function createAdminRouter(deps: AdminRouterDependencies): Router {
 
   const apiDocsProxyRouter = express.Router();
   registerApiRoutes(apiDocsProxyRouter, deps.achievementService);
-  router.use('/api-docs/proxy', apiDocsProxyRouter);
+  router.use('/api-docs/proxy/api/v1', apiDocsProxyRouter);
 
   router.get('/achievements', async (req, res) => {
     const state = readPageState(req);

@@ -20,9 +20,15 @@ The upstream package includes a `prepare` script, so installing from GitHub buil
 
 ## Features
 
-- `GET /achievements-achieved`
-- `GET /achievements-not-achieved`
-- `GET /healthz`
+Source layout:
+
+- `src/app/` contains Express app composition, admin UI routes, and app-level auth middleware.
+- `src/api/v1/` contains the versioned public API route handlers.
+- Future API versions should be added as sibling folders such as `src/api/v1.1/` or `src/api/v2/`.
+
+- `GET /api/v1/achievements-achieved`
+- `GET /api/v1/achievements-not-achieved`
+- `GET /api/v1/healthz`
 - `GET /admin/login`, `GET /admin`, and `GET /admin/api-docs`
 - Internal API key auth via `x-internal-key`
 - Strapi-admin-backed authentication for the built-in admin UI
@@ -124,7 +130,7 @@ Example request:
 curl \
   -H 'x-internal-key: replace-me' \
   -H 'x-user-id: 8' \
-  'http://localhost:8080/achievements-not-achieved?locale=en'
+  'http://localhost:8080/api/v1/achievements-not-achieved?locale=en'
 ```
 
 ## Database Workflow
