@@ -33,6 +33,8 @@ export function createApp(options: CreateAppOptions) {
     eventBus: options.eventBus,
     subscriberService: options.subscriberService,
     logger: options.logger,
+    internalKey: options.internalKey,
+    achievementService: options.achievementService,
   }));
   app.use(createInternalKeyMiddleware(options.internalKey));
   app.use(createRouter(options.achievementService));

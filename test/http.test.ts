@@ -170,6 +170,43 @@ describe('http routes', () => {
     expect(response.text).not.toContain('User Achievements</h2>');
   });
 
+  it('renders the swagger api docs page for an authenticated admin session', async () => {
+    const app = createTestApp();
+
+    const response = await request(app)
+      .get('/admin/api-docs')
+      .set('Cookie', 'achievement_admin_session=valid-session');
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('API Docs');
+    expect(response.text).toContain('swagger-ui');
+  });
+
+  it('serves the swagger openapi document for an authenticated admin session', async () => {
+    const app = createTestApp();
+
+    const response = await request(app)
+      .get('/admin/api-docs/openapi.json')
+      .set('Cookie', 'achievement_admin_session=valid-session');
+
+    expect(response.status).toBe(200);
+    expect(response.body.openapi).toBe('3.0.3');
+    expect(response.body.paths['/achievements-achieved']).toBeTruthy();
+  });
+
+  it('allows authenticated admin docs proxy requests without the internal key header', async () => {
+    const app = createTestApp();
+
+    const response = await request(app)
+      .get('/admin/api-docs/proxy/achievements-not-achieved?locale=en')
+      .set('Cookie', 'achievement_admin_session=valid-session')
+      .set('x-user-id', '8');
+
+    expect(response.status).toBe(200);
+    expect(response.body.data).toHaveLength(1);
+    expect(response.body.data[0].code).toBe('writer');
+  });
+
   it('renders the event logs admin page with collapsed payload details', async () => {
     const app = createApp({
       achievementService: {

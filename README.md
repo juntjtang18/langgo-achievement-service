@@ -23,7 +23,7 @@ The upstream package includes a `prepare` script, so installing from GitHub buil
 - `GET /achievements-achieved`
 - `GET /achievements-not-achieved`
 - `GET /healthz`
-- `GET /admin/login` and `GET /admin`
+- `GET /admin/login`, `GET /admin`, and `GET /admin/api-docs`
 - Internal API key auth via `x-internal-key`
 - Strapi-admin-backed authentication for the built-in admin UI
 - Postgres schema bootstrap support plus explicit DB backup/setup scripts
@@ -98,6 +98,8 @@ The admin login form authenticates against `STRAPI_ADMIN_URL`, verifies the Stra
 - `as_achievement_change_logs`
 
 The admin page also includes a manual event publisher that sends JSON payloads through the configured event bus so you can test the live achievement logic.
+
+The admin UI also includes an interactive Swagger page at `/admin/api-docs` for the exposed HTTP endpoints. It uses the authenticated admin session to proxy requests server-side, so `x-internal-key` stays out of the browser while `Try it out` still works. Caller-scoped endpoints still expect `x-user-id`.
 Manual emit uses one event schema only: `userid`, `username`, and `event_name`.
 
 Admin table pages use Bootstrap styling and are route-based:

@@ -16,13 +16,15 @@ import {
   type AdminUserAchievementRow,
 } from '../repositories/adminRepository';
 import { AdminAuthService } from '../services/adminAuthService';
+import { AchievementService } from '../services/achievementService';
 import { EventSubscriberService } from '../services/eventSubscriberService';
+import { registerApiRoutes } from './routes';
 
 const SESSION_COOKIE = 'achievement_admin_session';
 const DEFAULT_ADMIN_PATH = '/admin/dashboard';
 const DEFAULT_PAGE_SIZE = 20;
 
-type AdminSection = 'dashboard' | 'events' | 'achievements' | 'translations' | 'event-lists' | 'user-achievements' | 'event-logs' | 'change-logs';
+type AdminSection = 'dashboard' | 'events' | 'api-docs' | 'achievements' | 'translations' | 'event-lists' | 'user-achievements' | 'event-logs' | 'change-logs';
 
 interface AdminLayoutOptions {
   notice?: string | null;
@@ -240,6 +242,7 @@ function renderLayout(title: string, content: string, options: AdminLayoutOption
       <nav class="sidebar-nav">
           ${navLink('dashboard', '/admin/dashboard', 'Dashboard', options.activeSection)}
           ${navLink('events', '/admin/events', 'Manual Event Emit', options.activeSection)}
+          ${navLink('api-docs', '/admin/api-docs', 'API Docs', options.activeSection)}
       </nav>
       <div class="sidebar-group-label">Entities</div>
       <nav class="sidebar-nav">
@@ -359,6 +362,156 @@ function renderSectionShell(title: string, description: string, body: string, op
       </div>
     </div>`,
     options
+  );
+}
+
+function buildOpenApiDocument(): Record<string, unknown> {
+  return {
+    openapi: '3.0.3',
+    info: {
+      title: 'LangGo Achievement Server API',
+      version: '0.1.0',
+      description: 'Interactive admin-authenticated API documentation for the exposed achievement endpoints.',
+    },
+    servers: [
+      {
+        url: '/admin/api-docs/proxy',
+        description: 'Admin-authenticated proxy for Swagger Try it out',
+      },
+    ],
+    tags: [
+      { name: 'Health' },
+      { name: 'Achievements' },
+    ],
+    paths: {
+      '/healthz': {
+        get: {
+          tags: ['Health'],
+          summary: 'Health check',
+          responses: {
+            '200': {
+              description: 'OK',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      ok: { type: 'boolean', example: true },
+                    },
+                    required: ['ok'],
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/achievements-achieved': {
+        get: {
+          tags: ['Achievements'],
+          summary: 'List achieved achievements for the caller',
+          description: 'Provide `x-user-id` in the Swagger UI headers before running the call.',
+          parameters: [
+            {
+              name: 'locale',
+              in: 'query',
+              required: false,
+              schema: { type: 'string', default: 'en' },
+            },
+            {
+              name: 'x-user-id',
+              in: 'header',
+              required: true,
+              schema: { type: 'string' },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Achievement rows',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      data: {
+                        type: 'array',
+                        items: { type: 'object', additionalProperties: true },
+                      },
+                    },
+                    required: ['data'],
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/achievements-not-achieved': {
+        get: {
+          tags: ['Achievements'],
+          summary: 'List not-yet-achieved achievements for the caller',
+          description: 'Provide `x-user-id` in the Swagger UI headers before running the call.',
+          parameters: [
+            {
+              name: 'locale',
+              in: 'query',
+              required: false,
+              schema: { type: 'string', default: 'en' },
+            },
+            {
+              name: 'x-user-id',
+              in: 'header',
+              required: true,
+              schema: { type: 'string' },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Achievement rows',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      data: {
+                        type: 'array',
+                        items: { type: 'object', additionalProperties: true },
+                      },
+                    },
+                    required: ['data'],
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  };
+}
+
+function renderSwaggerPage(options: AdminLayoutOptions): string {
+  return renderSectionShell(
+    'API Docs',
+    'Swagger UI for the exposed achievement endpoints. Requests run through an admin-authenticated proxy so the internal key stays server-side.',
+    `<p class="small text-secondary mb-3">For the caller-scoped endpoints, fill in <code>x-user-id</code> in the request headers before running the call.</p>
+    <div id="swagger-ui"></div>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css">
+    <style>
+      .swagger-ui .topbar { display: none; }
+      .swagger-ui .opblock-tag { border-bottom: 1px solid #e5e7eb; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+    <script>
+      window.ui = SwaggerUIBundle({
+        url: '/admin/api-docs/openapi.json',
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        displayRequestDuration: true,
+        persistAuthorization: false,
+      });
+    </script>`,
+    { ...options, activeSection: 'api-docs' }
   );
 }
 
@@ -950,6 +1103,8 @@ interface AdminRouterDependencies {
   eventBus: EventBus;
   subscriberService: EventSubscriberService;
   logger: Logger;
+  internalKey: string;
+  achievementService: AchievementService;
 }
 
 function pageOptions(req: Request, userEmail: string, activeSection: AdminSection): AdminLayoutOptions {
@@ -1029,6 +1184,18 @@ export function createAdminRouter(deps: AdminRouterDependencies): Router {
       }
     })();
   });
+
+  router.get('/api-docs', (req, res) => {
+    res.type('html').send(renderSwaggerPage(pageOptions(req, res.locals.adminSession.email, 'api-docs')));
+  });
+
+  router.get('/api-docs/openapi.json', (_req, res) => {
+    res.json(buildOpenApiDocument());
+  });
+
+  const apiDocsProxyRouter = express.Router();
+  registerApiRoutes(apiDocsProxyRouter, deps.achievementService);
+  router.use('/api-docs/proxy', apiDocsProxyRouter);
 
   router.get('/achievements', async (req, res) => {
     const state = readPageState(req);

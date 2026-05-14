@@ -1,7 +1,7 @@
-import { Router, type Request, type Response } from 'express';
+import { Router, type Request, type Response, type Router as ExpressRouter } from 'express';
 import { AchievementService } from '../services/achievementService';
 
-function readUserContext(req: Request): { userId: string; locale: string } {
+export function readUserContext(req: Request): { userId: string; locale: string } {
   const userId = req.header('x-user-id');
   if (!userId) {
     throw new Error('Missing x-user-id header');
@@ -13,9 +13,7 @@ function readUserContext(req: Request): { userId: string; locale: string } {
   };
 }
 
-export function createRouter(achievementService: AchievementService): Router {
-  const router = Router();
-
+export function registerApiRoutes(router: ExpressRouter, achievementService: AchievementService): void {
   router.get('/healthz', (_req: Request, res: Response) => {
     res.json({ ok: true });
   });
@@ -41,6 +39,10 @@ export function createRouter(achievementService: AchievementService): Router {
       next(error);
     }
   });
+}
 
+export function createRouter(achievementService: AchievementService): Router {
+  const router = Router();
+  registerApiRoutes(router, achievementService);
   return router;
 }
