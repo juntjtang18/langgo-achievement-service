@@ -209,10 +209,10 @@ describeIfIntegration('achievement event bus integration', () => {
       progress: row.progress,
       achieved: row.achieved,
     }))).toEqual([
-      { achievement_id: '10', progress: 1, achieved: true },
-      { achievement_id: '11', progress: 4, achieved: true },
-      { achievement_id: '12', progress: 5, achieved: true },
-      { achievement_id: '13', progress: 1, achieved: true },
+      { achievement_id: 10, progress: 1, achieved: true },
+      { achievement_id: 11, progress: 4, achieved: true },
+      { achievement_id: 12, progress: 5, achieved: true },
+      { achievement_id: 13, progress: 1, achieved: true },
     ]);
 
     const eventLogs = await waitFor(

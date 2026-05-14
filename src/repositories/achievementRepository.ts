@@ -1,6 +1,13 @@
 import type { PoolClient } from 'pg';
 import { Database, getSchemaQualifiedTable } from '../db';
-import type { AchievementChangeLogRow, AchievementDefinition, AchievementTranslation, EventLogRow, UserAchievementRow } from '../types';
+import type {
+  AchievementChangeLogRow,
+  AchievementDefinition,
+  AchievementResponseRow,
+  AchievementTranslation,
+  EventLogRow,
+  UserAchievementRow,
+} from '../types';
 
 interface AchievementRow {
   id: number;
@@ -17,6 +24,15 @@ interface TranslationRow {
   locale: string | null;
   title: string | null;
   description: string | null;
+}
+
+function getLocaleCandidates(locale = 'en'): string[] {
+  return Array.from(
+    new Set(
+      [locale, locale.split('-')[0], 'en']
+        .filter((value) => typeof value === 'string' && value.length > 0)
+    )
+  );
 }
 
 export class AchievementRepository {
@@ -77,6 +93,44 @@ export class AchievementRepository {
        WHERE userid = $1
        ORDER BY achievement_id ASC`,
       [userid]
+    );
+
+    return result.rows;
+  }
+
+  async listUserAchievementResponses(
+    userid: string,
+    locale: string,
+    achieved: boolean
+  ): Promise<AchievementResponseRow[]> {
+    const result = await this.db.query<AchievementResponseRow>(
+      `SELECT
+         a.id,
+         a.code,
+         a.event_name,
+         a.icon_name,
+         a.points,
+         a.goal,
+         COALESCE(ua.progress, 0) AS progress,
+         COALESCE(ua.achieved, FALSE) AS achieved,
+         ua.achieved_at::text AS achieved_at,
+         translation.title,
+         translation.description
+       FROM ${this.achievementsTable} a
+       LEFT JOIN ${this.userAchievementsTable} ua
+         ON ua.achievement_id = a.id
+        AND ua.userid = $1
+       LEFT JOIN LATERAL (
+         SELECT t.title, t.description
+         FROM ${this.translationsTable} t
+         WHERE t.achievement_id = a.id
+           AND t.locale = ANY($3::text[])
+         ORDER BY array_position($3::text[], t.locale), t.id ASC
+         LIMIT 1
+       ) translation ON TRUE
+       WHERE COALESCE(ua.achieved, FALSE) = $2
+       ORDER BY a.id ASC`,
+      [userid, achieved, getLocaleCandidates(locale)]
     );
 
     return result.rows;

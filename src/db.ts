@@ -1,8 +1,12 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg';
+import { Pool, types, type PoolClient, type QueryResult, type QueryResultRow } from 'pg';
 import type { Logger } from 'pino';
 import type { AppConfig } from './config';
+
+const POSTGRES_INT8_OID = 20;
+
+types.setTypeParser(POSTGRES_INT8_OID, (value) => Number(value));
 
 const REQUIRED_TABLES = [
   'as_achievements',
@@ -36,7 +40,10 @@ export class Database {
       password: config.database.password,
       ssl: config.database.ssl ? { rejectUnauthorized: false } : false,
       max: 10,
-      idleTimeoutMillis: 30000,
+      min: 1,
+      idleTimeoutMillis: 10 * 60 * 1000,
+      connectionTimeoutMillis: 5000,
+      keepAlive: true,
     });
   }
 

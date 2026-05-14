@@ -60,6 +60,10 @@ export class AchievementService {
   }
 
   private async listByAchievementState(userid: string, locale: string, achieved: boolean): Promise<AchievementResponseRow[]> {
+    if (typeof this.repository.listUserAchievementResponses === 'function') {
+      return this.repository.listUserAchievementResponses(userid, locale, achieved);
+    }
+
     const [achievements, userAchievements] = await Promise.all([
       this.repository.listAchievements(),
       this.repository.listUserAchievements(userid),
