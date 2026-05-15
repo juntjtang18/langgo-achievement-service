@@ -563,7 +563,7 @@ function renderFilterToolbar(path: string, state: PageState, total: number): str
       <div class="d-flex flex-column gap-3">
         <div class="d-flex flex-wrap align-items-center gap-2">
           <label class="form-label mb-0 fw-semibold">Optional SQL sub-clause appended after <code>WHERE</code>.</label>
-          <input class="form-control form-control-sm font-monospace flex-grow-1" style="min-width: 320px;" name="where" value="${escapeHtml(state.whereClause)}" placeholder="e.g. event_name = 'flashcard.create' AND points >= 1" />
+          <input class="form-control form-control-sm font-monospace flex-grow-1" style="min-width: 320px;" name="where" value="${escapeHtml(state.whereClause)}" placeholder="e.g. event_name = 'flashcard.created' AND points >= 1" />
           <input type="hidden" name="page" value="1" />
           <button type="submit" class="btn btn-primary btn-sm">Apply</button>
         </div>
@@ -715,7 +715,7 @@ function renderEventsPage(
           </div>
           <div class="col-12">
             <label class="form-label fw-semibold">Payload JSON</label>
-            <textarea class="form-control form-control-sm font-monospace" id="achievement-event-payload" name="payload_json" rows="14" placeholder='{"userid":"8","username":"vivian","event_name":"flashcard.review"}' required>${escapeHtml(payloadText)}</textarea>
+            <textarea class="form-control form-control-sm font-monospace" id="achievement-event-payload" name="payload_json" rows="14" placeholder='{"userid":"8","username":"vivian","event_name":"flashcard.reviewed"}' required>${escapeHtml(payloadText)}</textarea>
           </div>
           <div class="col-12 d-flex justify-content-end gap-2">
             <button type="submit" formaction="/admin/subscriptions/refresh" class="btn btn-outline-secondary btn-sm" title="Refresh subscriptions" aria-label="Refresh subscriptions">

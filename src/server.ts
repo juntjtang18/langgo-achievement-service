@@ -56,21 +56,77 @@ async function main() {
     subscriberService,
   });
   const httpServer = createServer(app);
+  let isShuttingDown = false;
+
+  const closeResources = async () => {
+    await withShutdownTimeout(
+      subscriberService.close(),
+      500,
+      () => logger.warn({}, 'achievement event unsubscribe timed out during shutdown')
+    ).catch((error) => logger.error({ err: error }, 'failed to close subscribers'));
+    await withShutdownTimeout(
+      eventBus.close(),
+      25,
+      () => logger.warn({}, 'event bus close timed out during shutdown')
+    ).catch((error) => logger.error({ err: error }, 'failed to close event bus'));
+    await db.close().catch((error) => logger.error({ err: error }, 'failed to close database'));
+  };
 
   const shutdown = async (signal: string) => {
+    if (isShuttingDown) {
+      return;
+    }
+
+    isShuttingDown = true;
     logger.info({ signal }, 'Shutting down server');
-    httpServer.close();
-    await subscriberService.close().catch((error) => logger.error({ err: error }, 'failed to close subscribers'));
-    await eventBus.close().catch((error) => logger.error({ err: error }, 'failed to close event bus'));
-    await db.close().catch((error) => logger.error({ err: error }, 'failed to close database'));
+    httpServer.close((error) => {
+      if (error) {
+        logger.error({ err: error }, 'failed to close HTTP server');
+      }
+    });
+    httpServer.closeIdleConnections?.();
+    httpServer.closeAllConnections?.();
+    await closeResources();
+    logger.info({}, 'achievement server shutdown complete');
     process.exit(0);
   };
 
   process.on('SIGINT', () => void shutdown('SIGINT'));
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
+  httpServer.on('error', (error) => {
+    if (isShuttingDown) {
+      return;
+    }
+
+    isShuttingDown = true;
+    logger.error({ err: error }, 'achievement server listen failed');
+    void closeResources().finally(() => process.exit(1));
+  });
 
   httpServer.listen(config.port, () => {
     logger.info({ port: config.port }, 'Server listening');
+  });
+}
+
+async function withShutdownTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  onTimeout: () => void
+): Promise<T | undefined> {
+  let timeout: NodeJS.Timeout | undefined;
+
+  return Promise.race([
+    promise,
+    new Promise<undefined>((resolve) => {
+      timeout = setTimeout(() => {
+        onTimeout();
+        resolve(undefined);
+      }, timeoutMs);
+    }),
+  ]).finally(() => {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
   });
 }
 

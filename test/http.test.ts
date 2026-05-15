@@ -12,7 +12,7 @@ function createTestApp() {
         {
           id: 11,
           code: 'writer',
-          event_name: 'article.create',
+          event_name: 'article.created',
           icon_name: null,
           points: 1,
           goal: 1,
@@ -28,7 +28,7 @@ function createTestApp() {
       listAchievements: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
       listTranslations: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
       listEventLists: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
-      listAllEventNames: async () => ['flashcard.review'],
+      listAllEventNames: async () => ['flashcard.reviewed'],
       listUserAchievements: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
       listEventLogs: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
       listAchievementChangeLogs: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
@@ -82,7 +82,7 @@ describe('http routes', () => {
         {
           id: 11,
           code: 'writer',
-          event_name: 'article.create',
+          event_name: 'article.created',
           icon_name: null,
           points: 1,
           goal: 1,
@@ -118,7 +118,7 @@ describe('http routes', () => {
         listAchievements: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
         listTranslations: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
         listEventLists: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
-        listAllEventNames: async () => ['flashcard.review'],
+        listAllEventNames: async () => ['flashcard.reviewed'],
         listUserAchievements: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
       } as any,
       adminAuthService: {
@@ -221,12 +221,12 @@ describe('http routes', () => {
         listAchievements: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
         listTranslations: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
         listEventLists: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
-        listAllEventNames: async () => ['flashcard.review'],
+        listAllEventNames: async () => ['flashcard.reviewed'],
         listUserAchievements: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
         listEventLogs: async () => ({
           rows: [{
             id: 1,
-            event_name: 'flashcard.review',
+            event_name: 'flashcard.reviewed',
             userid: '8',
             username: 'vivian',
             payload_json: '{"review":{"userId":8}}',
@@ -269,11 +269,11 @@ describe('http routes', () => {
     expect(response.text).toContain('Event Logs');
     expect(response.text).toContain('<details>');
     expect(response.text).toContain('payload_json');
-    expect(response.text).toContain('flashcard.review');
+    expect(response.text).toContain('flashcard.reviewed');
     expect(response.text).not.toContain('Manual Event Emit</h2>');
   });
 
-  it('normalizes legacy manual event payloads into the canonical sibling event-bus format', async () => {
+  it('normalizes manual event payloads into the canonical sibling event-bus format', async () => {
     const publishes: Array<{ topic: string; payload: any }> = [];
     const app = createApp({
       achievementService: {
@@ -285,7 +285,7 @@ describe('http routes', () => {
         listAchievements: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
         listTranslations: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
         listEventLists: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
-        listAllEventNames: async () => ['flashcard.review'],
+        listAllEventNames: async () => ['flashcard.reviewed'],
         listUserAchievements: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
         listEventLogs: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
         listAchievementChangeLogs: async () => ({ rows: [], total: 0, page: 1, pageSize: 20 }),
@@ -321,16 +321,16 @@ describe('http routes', () => {
       .set('Cookie', 'achievement_admin_session=valid-session')
       .type('form')
       .send({
-        topic: 'flashcard.review',
+        topic: 'flashcard.reviewed',
         payload_json: '{"userid":"8","username":"vivian"}',
       });
 
     expect(response.status).toBe(200);
     expect(publishes).toHaveLength(1);
-    expect(publishes[0].topic).toBe('flashcard.review');
+    expect(publishes[0].topic).toBe('flashcard.reviewed');
     expect(typeof publishes[0].payload.event_id).toBe('string');
     expect(publishes[0].payload.event_id.length).toBeGreaterThan(0);
-    expect(publishes[0].payload.event_name).toBe('flashcard.review');
+    expect(publishes[0].payload.event_name).toBe('flashcard.reviewed');
     expect(publishes[0].payload.userid).toBe('8');
     expect(publishes[0].payload.username).toBe('vivian');
   });

@@ -1,4 +1,5 @@
 import type { EventBusMessage } from '../types';
+import { normalizeAchievementEventName } from '../eventNames';
 import { ProgressService } from './progressService';
 
 function pickUserId(payload: Record<string, any> = {}): string | number | null {
@@ -14,11 +15,12 @@ export class EventHandlerService {
 
   async handle(message: EventBusMessage<Record<string, any>>): Promise<{ updated: number }> {
     const payload = message.payload ?? {};
-    const eventName =
+    const eventName = normalizeAchievementEventName(
       message.topic ||
       payload.eventType ||
       payload.event_name ||
-      '';
+      ''
+    );
 
     return this.progressService.applyEvent({
       event_name: eventName,

@@ -30,7 +30,7 @@ const EVENT_BUS_MESSAGE_MAP: Record<string, string> = {
   '[event-bus-client] initializing event bus': 'Event bus client initialized',
   '[event-bus-client] closing event bus': 'Event bus client closed',
   '[event-bus-client] connecting Postgres publisher': 'Connecting Postgres event publisher',
-  '[event-bus-client] connecting Postgres subscriber': 'Connecting Postgres event subscriber',
+  '[event-bus-client] connecting Postgres subscriber': 'Connecting Postgres event bus subscriber',
   '[event-bus-client] publishing event': 'Publishing event to event bus',
   '[event-bus-client] closing Postgres driver': 'Closing Postgres event bus driver',
 };

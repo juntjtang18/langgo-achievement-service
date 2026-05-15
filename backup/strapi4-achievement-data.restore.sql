@@ -7,22 +7,22 @@ BEGIN;
 INSERT INTO {{SCHEMA}}.as_achievements
   (id, code, event_name, icon_name, points, goal, created_at, updated_at)
 VALUES
-  (1, 'FLASHCARD_CREATE_10', 'flashcard.create', 'pencil', 1, 10, '2026-05-04 21:05:25.127', '2026-05-06 15:53:20.515831'),
-  (2, 'FLASHCARD_CREATE_50', 'flashcard.create', 'square.and.pencil', 1, 50, '2026-05-04 21:06:05.884', '2026-05-06 15:53:20.515831'),
-  (3, 'FLASHCARD_CREATE_100', 'flashcard.create', 'note.text.badge.plus', 1, 100, '2026-05-04 21:06:27.41', '2026-05-06 15:53:20.515831'),
-  (4, 'FLASHCARD_CREATE_200', 'flashcard.create', 'text.badge.plus', 1, 200, '2026-05-04 21:06:49.498', '2026-05-06 15:53:20.515831'),
-  (5, 'FLASHCARD_CREATE_500', 'flashcard.create', 'plus.square.on.square', 1, 500, '2026-05-04 21:07:12.125', '2026-05-06 15:53:20.515831'),
-  (6, 'FLASHCARD_CREATE_1000', 'flashcard.create', 'rectangle.stack.badge.plus', 1, 1000, '2026-05-04 21:07:24.168', '2026-05-06 15:53:20.515831'),
-  (7, 'FLASHCARD_CREATE_2000', 'flashcard.create', 'square.stack.3d.up', 1, 2000, '2026-05-04 21:07:42.908', '2026-05-06 15:53:20.515831'),
-  (8, 'FLASHCARD_CREATE_3000', 'flashcard.create', 'books.vertical.fill', 1, 3000, '2026-05-04 21:08:00.024', '2026-05-06 15:53:20.515831'),
-  (9, 'FLASHCARD_CREATE_5000', 'flashcard.create', 'archivebox.fill', 1, 5000, '2026-05-04 21:08:17.555', '2026-05-06 15:53:20.515831'),
-  (10, 'FLASHCARD_REVIEW_100', 'flashcard.review', 'play.circle', 1, 100, '2026-05-04 21:09:14.216', '2026-05-06 15:53:20.515831'),
-  (11, 'FLASHCARD_REVIEW_200', 'flashcard.review', 'play.circle.fill', 1, 200, '2026-05-04 21:09:51.515', '2026-05-06 15:53:20.515831'),
-  (12, 'FLASHCARD_REVIEW_500', 'flashcard.review', 'arrow.triangle.2.circlepath.circle', 1, 500, '2026-05-04 21:10:14.686', '2026-05-06 15:53:20.515831'),
-  (13, 'FLASHCARD_REVIEW_1000', 'flashcard.review', 'checkmark.circle', 1, 1000, '2026-05-04 21:11:00.936', '2026-05-06 15:53:20.515831'),
-  (14, 'FLASHCARD_REVIEW_2000', 'flashcard.review', 'checkmark.circle.fill', 1, 2000, '2026-05-04 21:11:27.529', '2026-05-06 15:53:20.515831'),
-  (15, 'FLASHCARD_REVIEW_3000', 'flashcard.review', 'checkmark.seal', 1, 3000, '2026-05-04 21:12:08.462', '2026-05-06 15:53:20.515831'),
-  (16, 'FLASHCARD_REVIEW_5000', 'flashcard.review', 'checkmark.seal.fill', 1, 5000, '2026-05-04 21:12:50.558', '2026-05-06 15:53:20.515831'),
+  (1, 'FLASHCARD_CREATE_10', 'flashcard.created', 'pencil', 1, 10, '2026-05-04 21:05:25.127', '2026-05-06 15:53:20.515831'),
+  (2, 'FLASHCARD_CREATE_50', 'flashcard.created', 'square.and.pencil', 1, 50, '2026-05-04 21:06:05.884', '2026-05-06 15:53:20.515831'),
+  (3, 'FLASHCARD_CREATE_100', 'flashcard.created', 'note.text.badge.plus', 1, 100, '2026-05-04 21:06:27.41', '2026-05-06 15:53:20.515831'),
+  (4, 'FLASHCARD_CREATE_200', 'flashcard.created', 'text.badge.plus', 1, 200, '2026-05-04 21:06:49.498', '2026-05-06 15:53:20.515831'),
+  (5, 'FLASHCARD_CREATE_500', 'flashcard.created', 'plus.square.on.square', 1, 500, '2026-05-04 21:07:12.125', '2026-05-06 15:53:20.515831'),
+  (6, 'FLASHCARD_CREATE_1000', 'flashcard.created', 'rectangle.stack.badge.plus', 1, 1000, '2026-05-04 21:07:24.168', '2026-05-06 15:53:20.515831'),
+  (7, 'FLASHCARD_CREATE_2000', 'flashcard.created', 'square.stack.3d.up', 1, 2000, '2026-05-04 21:07:42.908', '2026-05-06 15:53:20.515831'),
+  (8, 'FLASHCARD_CREATE_3000', 'flashcard.created', 'books.vertical.fill', 1, 3000, '2026-05-04 21:08:00.024', '2026-05-06 15:53:20.515831'),
+  (9, 'FLASHCARD_CREATE_5000', 'flashcard.created', 'archivebox.fill', 1, 5000, '2026-05-04 21:08:17.555', '2026-05-06 15:53:20.515831'),
+  (10, 'FLASHCARD_REVIEW_100', 'flashcard.reviewed', 'play.circle', 1, 100, '2026-05-04 21:09:14.216', '2026-05-06 15:53:20.515831'),
+  (11, 'FLASHCARD_REVIEW_200', 'flashcard.reviewed', 'play.circle.fill', 1, 200, '2026-05-04 21:09:51.515', '2026-05-06 15:53:20.515831'),
+  (12, 'FLASHCARD_REVIEW_500', 'flashcard.reviewed', 'arrow.triangle.2.circlepath.circle', 1, 500, '2026-05-04 21:10:14.686', '2026-05-06 15:53:20.515831'),
+  (13, 'FLASHCARD_REVIEW_1000', 'flashcard.reviewed', 'checkmark.circle', 1, 1000, '2026-05-04 21:11:00.936', '2026-05-06 15:53:20.515831'),
+  (14, 'FLASHCARD_REVIEW_2000', 'flashcard.reviewed', 'checkmark.circle.fill', 1, 2000, '2026-05-04 21:11:27.529', '2026-05-06 15:53:20.515831'),
+  (15, 'FLASHCARD_REVIEW_3000', 'flashcard.reviewed', 'checkmark.seal', 1, 3000, '2026-05-04 21:12:08.462', '2026-05-06 15:53:20.515831'),
+  (16, 'FLASHCARD_REVIEW_5000', 'flashcard.reviewed', 'checkmark.seal.fill', 1, 5000, '2026-05-04 21:12:50.558', '2026-05-06 15:53:20.515831'),
   (17, 'FLASHCARD_REMEMBERED_10', 'flashcard.remembered', 'sparkles', 1, 10, '2026-05-04 21:47:22.961', '2026-05-06 15:53:20.515831'),
   (18, 'FLASHCARD_REMEMBERED_20', 'flashcard.remembered', 'star', 1, 20, '2026-05-04 21:47:51.873', '2026-05-06 15:53:20.515831'),
   (19, 'FLASHCARD_REMEMBERED_50', 'flashcard.remembered', 'star.fill', 1, 50, '2026-05-04 21:48:14.065', '2026-05-06 15:53:20.515831'),
@@ -262,10 +262,10 @@ SET achievement_id = EXCLUDED.achievement_id,
 INSERT INTO {{SCHEMA}}.as_event_lists
   (id, event_name, points, created_at, updated_at)
 VALUES
-  (1, 'flashcard.create', 1, '2026-05-04 21:38:27.732', '2026-05-04 21:38:27.732'),
-  (2, 'flashcard.review', 1, '2026-05-04 21:38:34.296', '2026-05-04 21:38:34.296'),
+  (1, 'flashcard.created', 1, '2026-05-04 21:38:27.732', '2026-05-04 21:38:27.732'),
+  (2, 'flashcard.reviewed', 1, '2026-05-04 21:38:34.296', '2026-05-04 21:38:34.296'),
   (3, 'flashcard.remembered', 1, '2026-05-04 21:38:49.875', '2026-05-04 21:38:49.875'),
-  (4, 'article.create', 1, '2026-05-04 21:39:52.327', '2026-05-04 21:39:52.327')
+  (4, 'article.created', 1, '2026-05-04 21:39:52.327', '2026-05-04 21:39:52.327')
 ON CONFLICT (id) DO UPDATE
 SET event_name = EXCLUDED.event_name,
     points = EXCLUDED.points,

@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { getAchievementEventNameAliases, normalizeAchievementEventName } from '../src/eventNames';
+import { AchievementRepository } from '../src/repositories/achievementRepository';
 import { AchievementService } from '../src/services/achievementService';
 import { EventHandlerService } from '../src/services/eventHandler';
 import { ProgressService } from '../src/services/progressService';
@@ -15,6 +17,48 @@ function reportCase(testCase: string, expected: unknown, actual: unknown) {
 }
 
 describe('achievement service', () => {
+  it('uses canonical Strapi event names for achievement subscriptions and progress lookup', async () => {
+    expect(normalizeAchievementEventName('flashcard.created')).toBe('flashcard.created');
+    expect(normalizeAchievementEventName('flashcard.reviewed')).toBe('flashcard.reviewed');
+    expect(normalizeAchievementEventName('article.created')).toBe('article.created');
+    expect(getAchievementEventNameAliases('flashcard.reviewed')).toEqual([
+      'flashcard.reviewed',
+    ]);
+
+    const queries: Array<{ text: string; values?: unknown[] }> = [];
+    const repository = new AchievementRepository({
+      schema: 'achievement_test',
+      pool: {},
+      query: async (text: string, values?: unknown[]) => {
+        queries.push({ text, values });
+        if (text.includes('FROM "achievement_test"."as_event_lists"')) {
+          return {
+            rows: [
+              { event_name: 'flashcard.created' },
+              { event_name: 'flashcard.reviewed' },
+              { event_name: 'article.created' },
+            ],
+          };
+        }
+        return { rows: [] };
+      },
+    } as any);
+
+    await expect(repository.listEventNames()).resolves.toEqual([
+      'flashcard.created',
+      'flashcard.reviewed',
+      'article.created',
+    ]);
+
+    await repository.listAchievementProgressForEvent('60', 'flashcard.reviewed', {
+      query: async (text: string, values?: unknown[]) => {
+        queries.push({ text, values });
+        return { rows: [] };
+      },
+    } as any);
+    expect(queries.at(-1)?.values).toEqual(['60', ['flashcard.reviewed']]);
+  });
+
   it('falls back from locale variant to base locale', async () => {
     const service = new AchievementService({
       ensureUserAchievements: async () => undefined,
@@ -210,7 +254,7 @@ describe('achievement service', () => {
     }));
 
     reportCase(
-      'achievement handler accepts canonical Strapi event fields and legacy aliases',
+      'achievement handler accepts canonical Strapi event fields and user field aliases',
       expected,
       actual
     );

@@ -1,5 +1,6 @@
 import type { PoolClient } from 'pg';
 import { Database, getSchemaQualifiedTable } from '../db';
+import { getAchievementEventNameAliases } from '../eventNames';
 import type {
   AchievementChangeLogRow,
   AchievementDefinition,
@@ -147,6 +148,7 @@ export class AchievementRepository {
       new Set(
         result.rows
           .map((row) => row.event_name?.trim())
+          .flatMap((eventName) => getAchievementEventNameAliases(eventName))
           .filter((value): value is string => Boolean(value))
       )
     );
@@ -179,10 +181,10 @@ export class AchievementRepository {
        INNER JOIN ${this.userAchievementsTable} ua
          ON ua.achievement_id = a.id
        WHERE ua.userid = $1
-         AND a.event_name = $2
+         AND a.event_name = ANY($2::text[])
        ORDER BY a.id ASC
        FOR UPDATE OF ua`,
-      [userid, eventName]
+      [userid, getAchievementEventNameAliases(eventName)]
     );
 
     return result.rows;

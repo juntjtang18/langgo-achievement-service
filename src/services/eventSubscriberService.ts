@@ -19,6 +19,7 @@ export class EventSubscriberService {
     const eventNames = await this.repository.listEventNames();
 
     for (const eventName of eventNames) {
+      this.logger.info({ eventName }, 'Subscribing to achievement event');
       const handle = await this.eventBus.subscribe<Record<string, any>>(eventName, async (message) => {
         try {
           this.logger.info({ eventName }, 'handling achievement event');
@@ -32,8 +33,6 @@ export class EventSubscriberService {
 
       this.subscriptions.push(handle);
     }
-
-    this.logger.info({ eventNames, eventCount: eventNames.length }, 'Subscribed to achievement events');
   }
 
   async refresh(): Promise<void> {
@@ -41,8 +40,13 @@ export class EventSubscriberService {
   }
 
   private async unregister(): Promise<void> {
-    await Promise.all(this.subscriptions.map((handle) => handle.unsubscribe()));
+    const subscriptions = this.subscriptions;
     this.subscriptions = [];
+
+    for (const handle of subscriptions) {
+      this.logger.info({ eventName: handle.topic }, 'Unsubscribing from achievement event');
+      await handle.unsubscribe();
+    }
   }
 
   async close(): Promise<void> {

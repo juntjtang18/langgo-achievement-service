@@ -320,18 +320,18 @@ ALTER TABLE ONLY {{SCHEMA}}.as_user_achievements ALTER COLUMN id SET DEFAULT nex
 --
 
 COPY {{SCHEMA}}.as_achievement_change_logs (id, event_log_id, achievement_id, user_achievement_id, event_name, userid, username, points_added, progress_before, progress_after, achieved_before, achieved_after, achieved_at, created_at) FROM stdin;
-1	1	13	39	flashcard.review	8	vivian	1	844	845	f	f	\N	2026-05-11 06:24:03.117857+00
-2	1	14	40	flashcard.review	8	vivian	1	844	845	f	f	\N	2026-05-11 06:24:03.117857+00
-3	1	15	41	flashcard.review	8	vivian	1	844	845	f	f	\N	2026-05-11 06:24:03.117857+00
-4	1	16	42	flashcard.review	8	vivian	1	844	845	f	f	\N	2026-05-11 06:24:03.117857+00
-5	2	13	39	flashcard.review	8	vivian	1	845	846	f	f	\N	2026-05-11 06:25:01.327114+00
-6	2	14	40	flashcard.review	8	vivian	1	845	846	f	f	\N	2026-05-11 06:25:01.327114+00
-7	2	15	41	flashcard.review	8	vivian	1	845	846	f	f	\N	2026-05-11 06:25:01.327114+00
-8	2	16	42	flashcard.review	8	vivian	1	845	846	f	f	\N	2026-05-11 06:25:01.327114+00
-9	3	13	39	flashcard.review	8	vivian	1	846	847	f	f	\N	2026-05-11 06:34:00.414913+00
-10	3	14	40	flashcard.review	8	vivian	1	846	847	f	f	\N	2026-05-11 06:34:00.414913+00
-11	3	15	41	flashcard.review	8	vivian	1	846	847	f	f	\N	2026-05-11 06:34:00.414913+00
-12	3	16	42	flashcard.review	8	vivian	1	846	847	f	f	\N	2026-05-11 06:34:00.414913+00
+1	1	13	39	flashcard.reviewed	8	vivian	1	844	845	f	f	\N	2026-05-11 06:24:03.117857+00
+2	1	14	40	flashcard.reviewed	8	vivian	1	844	845	f	f	\N	2026-05-11 06:24:03.117857+00
+3	1	15	41	flashcard.reviewed	8	vivian	1	844	845	f	f	\N	2026-05-11 06:24:03.117857+00
+4	1	16	42	flashcard.reviewed	8	vivian	1	844	845	f	f	\N	2026-05-11 06:24:03.117857+00
+5	2	13	39	flashcard.reviewed	8	vivian	1	845	846	f	f	\N	2026-05-11 06:25:01.327114+00
+6	2	14	40	flashcard.reviewed	8	vivian	1	845	846	f	f	\N	2026-05-11 06:25:01.327114+00
+7	2	15	41	flashcard.reviewed	8	vivian	1	845	846	f	f	\N	2026-05-11 06:25:01.327114+00
+8	2	16	42	flashcard.reviewed	8	vivian	1	845	846	f	f	\N	2026-05-11 06:25:01.327114+00
+9	3	13	39	flashcard.reviewed	8	vivian	1	846	847	f	f	\N	2026-05-11 06:34:00.414913+00
+10	3	14	40	flashcard.reviewed	8	vivian	1	846	847	f	f	\N	2026-05-11 06:34:00.414913+00
+11	3	15	41	flashcard.reviewed	8	vivian	1	846	847	f	f	\N	2026-05-11 06:34:00.414913+00
+12	3	16	42	flashcard.reviewed	8	vivian	1	846	847	f	f	\N	2026-05-11 06:34:00.414913+00
 \.
 
 
@@ -560,22 +560,22 @@ COPY {{SCHEMA}}.as_achievement_translations (id, achievement_id, locale, title, 
 --
 
 COPY {{SCHEMA}}.as_achievements (id, code, event_name, icon_name, points, goal, created_at, updated_at) FROM stdin;
-1	FLASHCARD_CREATE_10	flashcard.create	pencil	1	10	2026-05-04 21:05:25.127+00	2026-05-06 15:53:20.515831+00
-2	FLASHCARD_CREATE_50	flashcard.create	square.and.pencil	1	50	2026-05-04 21:06:05.884+00	2026-05-06 15:53:20.515831+00
-3	FLASHCARD_CREATE_100	flashcard.create	note.text.badge.plus	1	100	2026-05-04 21:06:27.41+00	2026-05-06 15:53:20.515831+00
-4	FLASHCARD_CREATE_200	flashcard.create	text.badge.plus	1	200	2026-05-04 21:06:49.498+00	2026-05-06 15:53:20.515831+00
-5	FLASHCARD_CREATE_500	flashcard.create	plus.square.on.square	1	500	2026-05-04 21:07:12.125+00	2026-05-06 15:53:20.515831+00
-6	FLASHCARD_CREATE_1000	flashcard.create	rectangle.stack.badge.plus	1	1000	2026-05-04 21:07:24.168+00	2026-05-06 15:53:20.515831+00
-7	FLASHCARD_CREATE_2000	flashcard.create	square.stack.3d.up	1	2000	2026-05-04 21:07:42.908+00	2026-05-06 15:53:20.515831+00
-8	FLASHCARD_CREATE_3000	flashcard.create	books.vertical.fill	1	3000	2026-05-04 21:08:00.024+00	2026-05-06 15:53:20.515831+00
-9	FLASHCARD_CREATE_5000	flashcard.create	archivebox.fill	1	5000	2026-05-04 21:08:17.555+00	2026-05-06 15:53:20.515831+00
-10	FLASHCARD_REVIEW_100	flashcard.review	play.circle	1	100	2026-05-04 21:09:14.216+00	2026-05-06 15:53:20.515831+00
-11	FLASHCARD_REVIEW_200	flashcard.review	play.circle.fill	1	200	2026-05-04 21:09:51.515+00	2026-05-06 15:53:20.515831+00
-12	FLASHCARD_REVIEW_500	flashcard.review	arrow.triangle.2.circlepath.circle	1	500	2026-05-04 21:10:14.686+00	2026-05-06 15:53:20.515831+00
-13	FLASHCARD_REVIEW_1000	flashcard.review	checkmark.circle	1	1000	2026-05-04 21:11:00.936+00	2026-05-06 15:53:20.515831+00
-14	FLASHCARD_REVIEW_2000	flashcard.review	checkmark.circle.fill	1	2000	2026-05-04 21:11:27.529+00	2026-05-06 15:53:20.515831+00
-15	FLASHCARD_REVIEW_3000	flashcard.review	checkmark.seal	1	3000	2026-05-04 21:12:08.462+00	2026-05-06 15:53:20.515831+00
-16	FLASHCARD_REVIEW_5000	flashcard.review	checkmark.seal.fill	1	5000	2026-05-04 21:12:50.558+00	2026-05-06 15:53:20.515831+00
+1	FLASHCARD_CREATE_10	flashcard.created	pencil	1	10	2026-05-04 21:05:25.127+00	2026-05-06 15:53:20.515831+00
+2	FLASHCARD_CREATE_50	flashcard.created	square.and.pencil	1	50	2026-05-04 21:06:05.884+00	2026-05-06 15:53:20.515831+00
+3	FLASHCARD_CREATE_100	flashcard.created	note.text.badge.plus	1	100	2026-05-04 21:06:27.41+00	2026-05-06 15:53:20.515831+00
+4	FLASHCARD_CREATE_200	flashcard.created	text.badge.plus	1	200	2026-05-04 21:06:49.498+00	2026-05-06 15:53:20.515831+00
+5	FLASHCARD_CREATE_500	flashcard.created	plus.square.on.square	1	500	2026-05-04 21:07:12.125+00	2026-05-06 15:53:20.515831+00
+6	FLASHCARD_CREATE_1000	flashcard.created	rectangle.stack.badge.plus	1	1000	2026-05-04 21:07:24.168+00	2026-05-06 15:53:20.515831+00
+7	FLASHCARD_CREATE_2000	flashcard.created	square.stack.3d.up	1	2000	2026-05-04 21:07:42.908+00	2026-05-06 15:53:20.515831+00
+8	FLASHCARD_CREATE_3000	flashcard.created	books.vertical.fill	1	3000	2026-05-04 21:08:00.024+00	2026-05-06 15:53:20.515831+00
+9	FLASHCARD_CREATE_5000	flashcard.created	archivebox.fill	1	5000	2026-05-04 21:08:17.555+00	2026-05-06 15:53:20.515831+00
+10	FLASHCARD_REVIEW_100	flashcard.reviewed	play.circle	1	100	2026-05-04 21:09:14.216+00	2026-05-06 15:53:20.515831+00
+11	FLASHCARD_REVIEW_200	flashcard.reviewed	play.circle.fill	1	200	2026-05-04 21:09:51.515+00	2026-05-06 15:53:20.515831+00
+12	FLASHCARD_REVIEW_500	flashcard.reviewed	arrow.triangle.2.circlepath.circle	1	500	2026-05-04 21:10:14.686+00	2026-05-06 15:53:20.515831+00
+13	FLASHCARD_REVIEW_1000	flashcard.reviewed	checkmark.circle	1	1000	2026-05-04 21:11:00.936+00	2026-05-06 15:53:20.515831+00
+14	FLASHCARD_REVIEW_2000	flashcard.reviewed	checkmark.circle.fill	1	2000	2026-05-04 21:11:27.529+00	2026-05-06 15:53:20.515831+00
+15	FLASHCARD_REVIEW_3000	flashcard.reviewed	checkmark.seal	1	3000	2026-05-04 21:12:08.462+00	2026-05-06 15:53:20.515831+00
+16	FLASHCARD_REVIEW_5000	flashcard.reviewed	checkmark.seal.fill	1	5000	2026-05-04 21:12:50.558+00	2026-05-06 15:53:20.515831+00
 17	FLASHCARD_REMEMBERED_10	flashcard.remembered	sparkles	1	10	2026-05-04 21:47:22.961+00	2026-05-06 15:53:20.515831+00
 18	FLASHCARD_REMEMBERED_20	flashcard.remembered	star	1	20	2026-05-04 21:47:51.873+00	2026-05-06 15:53:20.515831+00
 19	FLASHCARD_REMEMBERED_50	flashcard.remembered	star.fill	1	50	2026-05-04 21:48:14.065+00	2026-05-06 15:53:20.515831+00
@@ -596,10 +596,10 @@ COPY {{SCHEMA}}.as_achievements (id, code, event_name, icon_name, points, goal, 
 --
 
 COPY {{SCHEMA}}.as_event_lists (id, event_name, points, created_at, updated_at) FROM stdin;
-1	flashcard.create	1	2026-05-04 21:38:27.732+00	2026-05-04 21:38:27.732+00
-2	flashcard.review	1	2026-05-04 21:38:34.296+00	2026-05-04 21:38:34.296+00
+1	flashcard.created	1	2026-05-04 21:38:27.732+00	2026-05-04 21:38:27.732+00
+2	flashcard.reviewed	1	2026-05-04 21:38:34.296+00	2026-05-04 21:38:34.296+00
 3	flashcard.remembered	1	2026-05-04 21:38:49.875+00	2026-05-04 21:38:49.875+00
-4	article.create	1	2026-05-04 21:39:52.327+00	2026-05-04 21:39:52.327+00
+4	article.created	1	2026-05-04 21:39:52.327+00	2026-05-04 21:39:52.327+00
 \.
 
 
@@ -610,9 +610,9 @@ COPY {{SCHEMA}}.as_event_lists (id, event_name, points, created_at, updated_at) 
 --
 
 COPY {{SCHEMA}}.as_event_logs (id, event_name, userid, username, payload_json, received_at) FROM stdin;
-1	flashcard.review	8	vivian	{"userid": "8", "username": "vivian"}	2026-05-11 06:24:03.117857+00
-2	flashcard.review	8	vivian	{"userid": "8", "username": "vivian"}	2026-05-11 06:25:01.327114+00
-3	flashcard.review	8	vivian	{"userid": "8", "username": "vivian"}	2026-05-11 06:34:00.414913+00
+1	flashcard.reviewed	8	vivian	{"userid": "8", "username": "vivian"}	2026-05-11 06:24:03.117857+00
+2	flashcard.reviewed	8	vivian	{"userid": "8", "username": "vivian"}	2026-05-11 06:25:01.327114+00
+3	flashcard.reviewed	8	vivian	{"userid": "8", "username": "vivian"}	2026-05-11 06:34:00.414913+00
 \.
 
 
