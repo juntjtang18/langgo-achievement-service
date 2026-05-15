@@ -75,6 +75,8 @@ echo "--- Deploying ${SERVICE_NAME} version ${VERSION} ---"
 echo "Project: ${PROJECT_ID}"
 echo "Region: ${REGION}"
 echo "Image: ${IMAGE_NAME}"
+echo "Event bus: driver=${EVENT_BUS_DRIVER}, channelPrefix=${EVENT_BUS_CHANNEL_PREFIX}, postgresUrlConfigured=yes"
+echo "Database: host=${DATABASE_HOST}, database=${DATABASE_NAME}, schema=${ACHIEVEMENT_DB_SCHEMA}"
 
 echo "Building Docker image"
 docker build -t "${IMAGE_NAME}" .
