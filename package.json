@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "dotenv": "^16.6.1",
-    "event-bus-client": "github:juntjtang18/event-bus-client#93b28ae0f1e1b656d8d5f442a8d1c3b35dd4a915",
+    "event-bus-client": "github:juntjtang18/event-bus-client#main",
     "express": "^4.21.2",
     "pg": "^8.16.0",
     "pino": "^9.7.0",

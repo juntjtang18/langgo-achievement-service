@@ -56,11 +56,19 @@ ACHIEVEMENT_DB_SCHEMA="${ACHIEVEMENT_DB_SCHEMA:-achievement_system}"
 DATABASE_CLIENT="${DATABASE_CLIENT:-postgres}"
 DATABASE_HOST="${DATABASE_HOST:-/cloudsql/${CLOUD_SQL_INSTANCE}}"
 DATABASE_PORT="${DATABASE_PORT:-5432}"
-DATABASE_NAME="${DATABASE_NAME:-langgo-subsys-db1}"
-DATABASE_USERNAME="${DATABASE_USERNAME:-strapi}"
+DATABASE_NAME="${DATABASE_NAME:-postgres}"
+DATABASE_USERNAME="${DATABASE_USERNAME:-postgres}"
 DATABASE_SSL="${DATABASE_SSL:-false}"
 EVENT_BUS_DRIVER="${EVENT_BUS_DRIVER:-postgres}"
 EVENT_BUS_CHANNEL_PREFIX="${EVENT_BUS_CHANNEL_PREFIX:-event_bus}"
+
+if [ "${DATABASE_NAME}" = "postgres" ] && [ -n "${EVENT_BUS_POSTGRES_URL:-}" ]; then
+  EVENT_BUS_DATABASE_USERNAME="$(node -e 'const match = process.env.EVENT_BUS_POSTGRES_URL.match(new RegExp("^postgres(?:ql)?://([^:/?#@]+)(?::([^@]*))?@")); process.stdout.write(match ? decodeURIComponent(match[1]) : "");')"
+  if [ "${EVENT_BUS_DATABASE_USERNAME}" = "postgres" ]; then
+    DATABASE_USERNAME="${EVENT_BUS_DATABASE_USERNAME}"
+    DATABASE_PASSWORD="$(node -e 'const match = process.env.EVENT_BUS_POSTGRES_URL.match(new RegExp("^postgres(?:ql)?://([^:/?#@]+)(?::([^@]*))?@")); process.stdout.write(match && match[2] ? decodeURIComponent(match[2]) : "");')"
+  fi
+fi
 
 require_command docker
 require_command gcloud

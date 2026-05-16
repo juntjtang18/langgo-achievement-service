@@ -10,12 +10,6 @@ This service consumes `event-bus-client` directly from GitHub:
 "event-bus-client": "github:juntjtang18/event-bus-client#main"
 ```
 
-For development, `#main` is acceptable. For production deployments, pin this dependency to a tag or commit SHA instead of a floating branch reference, for example:
-
-```json
-"event-bus-client": "github:juntjtang18/event-bus-client#<tag-or-commit>"
-```
-
 The upstream package includes a `prepare` script, so installing from GitHub builds the package during `npm install`. The Docker build stage installs `git` to support GitHub-based package installation.
 
 ## Features

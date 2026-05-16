@@ -40,10 +40,13 @@ export class Database {
       password: config.database.password,
       ssl: config.database.ssl ? { rejectUnauthorized: false } : false,
       max: 10,
-      min: 1,
+      min: 0,
       idleTimeoutMillis: 10 * 60 * 1000,
       connectionTimeoutMillis: 5000,
       keepAlive: true,
+    });
+    this.pool.on('error', (error) => {
+      this.logger.error({ err: error }, 'database pool idle client error');
     });
   }
 
@@ -53,19 +56,7 @@ export class Database {
 
   async initialize(): Promise<void> {
     await this.query(`CREATE SCHEMA IF NOT EXISTS ${quoteIdentifier(this.schema)}`);
-
-    const tablesPresent = await this.hasRequiredTables();
-    if (!tablesPresent) {
-      const existingTableCount = await this.countExistingRequiredTables();
-      if (existingTableCount > 0) {
-        await this.applySqlFile(path.resolve(process.cwd(), 'sql/init.sql'));
-      } else {
-        const restored = await this.restoreFromBackupIfPresent();
-        if (!restored) {
-          await this.applySqlFile(path.resolve(process.cwd(), 'sql/init.sql'));
-        }
-      }
-    }
+    await this.applySqlFile(path.resolve(process.cwd(), 'sql/init.sql'));
 
     const schemaSeeded = await this.hasSeedData();
     if (!schemaSeeded) {
@@ -146,7 +137,7 @@ export class Database {
 
     try {
       files = (await fs.readdir(backupDir))
-        .filter((file) => file.endsWith('.sql'))
+        .filter((file) => file.endsWith('.restore.sql'))
         .sort();
     } catch {
       return false;
