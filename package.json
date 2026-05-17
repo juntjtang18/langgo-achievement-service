@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "db:setup": "./setupdb.sh",
     "dev": "tsx src/server.ts",
     "dev:watch": "tsx watch src/server.ts",
     "generate:restore-sql": "node scripts/generate-restore-sql.mjs",

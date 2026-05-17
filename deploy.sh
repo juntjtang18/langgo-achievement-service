@@ -3,7 +3,9 @@
 set -euo pipefail
 
 load_dotenv_defaults() {
-  if [ ! -f .env ]; then
+  local env_file="$1"
+  local key_regex="${2:-}"
+  if [ ! -f "${env_file}" ]; then
     return
   fi
 
@@ -14,13 +16,46 @@ load_dotenv_defaults() {
     key="${key#"${key%%[![:space:]]*}"}"
     key="${key%"${key##*[![:space:]]}"}"
     [[ -z "${key}" || ! "${key}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] && continue
+    if [ -n "${key_regex}" ] && [[ ! "${key}" =~ ${key_regex} ]]; then
+      continue
+    fi
     if [ -z "${!key+x}" ]; then
       export "${key}=${value}"
     fi
-  done < .env
+  done < "${env_file}"
 }
 
-load_dotenv_defaults
+build_database_postgres_url() {
+  node <<'NODE'
+const encode = encodeURIComponent;
+const user = encode(process.env.DATABASE_USERNAME || '');
+const password = encode(process.env.DATABASE_PASSWORD || '');
+const database = encode(process.env.DATABASE_NAME || '');
+const port = encode(process.env.DATABASE_PORT || '5432');
+const hostValue = process.env.DATABASE_HOST || '';
+if (hostValue.startsWith('/')) {
+  process.stdout.write(`postgresql://${user}:${password}@/${database}?host=${encode(hostValue)}&port=${port}`);
+} else {
+  process.stdout.write(`postgresql://${user}:${password}@${encode(hostValue)}:${port}/${database}`);
+}
+NODE
+}
+
+get_postgres_url_database_name() {
+  node <<'NODE'
+const connectionString = process.env.EVENT_BUS_POSTGRES_URL || '';
+try {
+  const url = new URL(connectionString);
+  process.stdout.write(decodeURIComponent(url.pathname.replace(/^\/+/, '')));
+} catch {
+  const match = connectionString.match(/^postgres(?:ql)?:\/\/(?:[^/@]+@)?\/([^?]+)/);
+  process.stdout.write(match && match[1] ? decodeURIComponent(match[1]) : '');
+}
+NODE
+}
+
+load_dotenv_defaults "../langgo_strapi4/.env" "^DATABASE_"
+load_dotenv_defaults ".env"
 
 require_env() {
   local name="$1"
@@ -56,25 +91,31 @@ ACHIEVEMENT_DB_SCHEMA="${ACHIEVEMENT_DB_SCHEMA:-achievement_system}"
 DATABASE_CLIENT="${DATABASE_CLIENT:-postgres}"
 DATABASE_HOST="${DATABASE_HOST:-/cloudsql/${CLOUD_SQL_INSTANCE}}"
 DATABASE_PORT="${DATABASE_PORT:-5432}"
-DATABASE_NAME="${DATABASE_NAME:-postgres}"
-DATABASE_USERNAME="${DATABASE_USERNAME:-postgres}"
+DATABASE_NAME="${DATABASE_NAME:-langgo-en-dev2}"
+DATABASE_USERNAME="${DATABASE_USERNAME:-strapi}"
 DATABASE_SSL="${DATABASE_SSL:-false}"
 EVENT_BUS_DRIVER="${EVENT_BUS_DRIVER:-postgres}"
 EVENT_BUS_CHANNEL_PREFIX="${EVENT_BUS_CHANNEL_PREFIX:-event_bus}"
 
-if [ "${DATABASE_NAME}" = "postgres" ] && [ -n "${EVENT_BUS_POSTGRES_URL:-}" ]; then
-  EVENT_BUS_DATABASE_USERNAME="$(node -e 'const match = process.env.EVENT_BUS_POSTGRES_URL.match(new RegExp("^postgres(?:ql)?://([^:/?#@]+)(?::([^@]*))?@")); process.stdout.write(match ? decodeURIComponent(match[1]) : "");')"
-  if [ "${EVENT_BUS_DATABASE_USERNAME}" = "postgres" ]; then
-    DATABASE_USERNAME="${EVENT_BUS_DATABASE_USERNAME}"
-    DATABASE_PASSWORD="$(node -e 'const match = process.env.EVENT_BUS_POSTGRES_URL.match(new RegExp("^postgres(?:ql)?://([^:/?#@]+)(?::([^@]*))?@")); process.stdout.write(match && match[2] ? decodeURIComponent(match[2]) : "");')"
-  fi
+if [ "${DATABASE_NAME}" = "postgres" ] && [ "${ALLOW_POSTGRES_DATABASE:-false}" != "true" ]; then
+  echo "Error: DATABASE_NAME=postgres is blocked. Use the same Strapi database as ../langgo_strapi4, or set ALLOW_POSTGRES_DATABASE=true intentionally."
+  exit 1
 fi
 
 require_command docker
 require_command gcloud
 require_env ACHIEVEMENT_INTERNAL_KEY
 require_env DATABASE_PASSWORD
-require_env EVENT_BUS_POSTGRES_URL
+
+if [ -z "${EVENT_BUS_POSTGRES_URL:-}" ]; then
+  EVENT_BUS_POSTGRES_URL="$(build_database_postgres_url)"
+fi
+
+EVENT_BUS_DATABASE_NAME="$(get_postgres_url_database_name)"
+if [ "${EVENT_BUS_DATABASE_NAME}" != "${DATABASE_NAME}" ]; then
+  echo "Error: EVENT_BUS_POSTGRES_URL database '${EVENT_BUS_DATABASE_NAME}' must match DATABASE_NAME '${DATABASE_NAME}'."
+  exit 1
+fi
 
 IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}:${VERSION}"
 REVISION_SUFFIX="v${VERSION//./-}"

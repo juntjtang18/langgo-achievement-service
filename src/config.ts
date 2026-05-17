@@ -17,12 +17,41 @@ const envSchema = z.object({
   DATABASE_PASSWORD: z.string().min(1),
   DATABASE_SSL: z.string().default('false'),
   EVENT_BUS_DRIVER: z.string().default('postgres'),
-  EVENT_BUS_POSTGRES_URL: z.string().min(1),
+  EVENT_BUS_POSTGRES_URL: z.string().optional(),
   EVENT_BUS_CHANNEL_PREFIX: z.string().default('event_bus'),
 });
 
 function parseBoolean(value: string): boolean {
   return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
+}
+
+function buildPostgresUrl(parsed: z.infer<typeof envSchema>): string {
+  const auth = `${encodeURIComponent(parsed.DATABASE_USERNAME)}:${encodeURIComponent(parsed.DATABASE_PASSWORD)}`;
+  const database = encodeURIComponent(parsed.DATABASE_NAME);
+  const port = encodeURIComponent(parsed.DATABASE_PORT);
+
+  if (parsed.DATABASE_HOST.startsWith('/')) {
+    const host = encodeURIComponent(parsed.DATABASE_HOST);
+    return `postgresql://${auth}@/${database}?host=${host}&port=${port}`;
+  }
+
+  const host = encodeURIComponent(parsed.DATABASE_HOST);
+  return `postgresql://${auth}@${host}:${port}/${database}`;
+}
+
+function getPostgresUrlDatabaseName(connectionString: string): string | null {
+  try {
+    const url = new URL(connectionString);
+    if (url.protocol !== 'postgres:' && url.protocol !== 'postgresql:') {
+      return null;
+    }
+
+    const database = url.pathname.replace(/^\/+/, '');
+    return database ? decodeURIComponent(database) : null;
+  } catch {
+    const match = connectionString.match(/^postgres(?:ql)?:\/\/(?:[^/@]+@)?\/([^?]+)/);
+    return match?.[1] ? decodeURIComponent(match[1]) : null;
+  }
 }
 
 let dotenvLoaded = false;
@@ -54,6 +83,11 @@ export interface AppConfig {
     password: string;
     ssl: boolean;
   };
+  eventBus: {
+    driver: 'postgres';
+    postgresUrl: string;
+    channelPrefix: string;
+  };
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -66,6 +100,20 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
 
   if (parsed.EVENT_BUS_DRIVER !== 'postgres') {
     throw new Error(`Unsupported EVENT_BUS_DRIVER "${parsed.EVENT_BUS_DRIVER}". Only "postgres" is supported.`);
+  }
+
+  const configuredEventBusPostgresUrl = parsed.EVENT_BUS_POSTGRES_URL?.trim() || undefined;
+  const eventBusPostgresUrl = configuredEventBusPostgresUrl ?? buildPostgresUrl(parsed);
+  const eventBusDatabase = getPostgresUrlDatabaseName(eventBusPostgresUrl);
+  if (!eventBusDatabase) {
+    throw new Error('EVENT_BUS_POSTGRES_URL must be a valid postgres/postgresql connection string.');
+  }
+
+  if (eventBusDatabase !== parsed.DATABASE_NAME) {
+    throw new Error(
+      `EVENT_BUS_POSTGRES_URL database "${eventBusDatabase}" must match DATABASE_NAME "${parsed.DATABASE_NAME}". ` +
+        'Achievement service tables and event-bus tables must use the same Strapi database.'
+    );
   }
 
   return {
@@ -81,6 +129,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       user: parsed.DATABASE_USERNAME,
       password: parsed.DATABASE_PASSWORD,
       ssl: parseBoolean(parsed.DATABASE_SSL),
+    },
+    eventBus: {
+      driver: 'postgres',
+      postgresUrl: eventBusPostgresUrl,
+      channelPrefix: parsed.EVENT_BUS_CHANNEL_PREFIX,
     },
   };
 }

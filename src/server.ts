@@ -27,10 +27,10 @@ async function main() {
   const progressService = new ProgressService(db, repository, logger);
   const eventHandler = new EventHandlerService(progressService);
   const eventBus = createEventBus({
-    driver: 'postgres',
+    driver: config.eventBus.driver,
     config: {
-      connectionString: process.env.EVENT_BUS_POSTGRES_URL ?? '',
-      channelPrefix: process.env.EVENT_BUS_CHANNEL_PREFIX ?? 'event_bus',
+      connectionString: config.eventBus.postgresUrl,
+      channelPrefix: config.eventBus.channelPrefix,
     },
     logger: eventBusLogger,
   });
@@ -39,7 +39,7 @@ async function main() {
   logger.info(
     {
       driver: eventBus.driver,
-      channelPrefix: process.env.EVENT_BUS_CHANNEL_PREFIX ?? 'event_bus',
+      channelPrefix: config.eventBus.channelPrefix,
     },
     'Event bus enabled'
   );

@@ -40,7 +40,6 @@ Use `.env.example` as the baseline. Required variables:
 - `DATABASE_NAME`
 - `DATABASE_USERNAME`
 - `DATABASE_PASSWORD`
-- `EVENT_BUS_POSTGRES_URL`
 
 Defaults:
 
@@ -52,7 +51,9 @@ Defaults:
 - `EVENT_BUS_DRIVER=postgres`
 - `EVENT_BUS_CHANNEL_PREFIX=event_bus`
 
-The server now auto-loads a local `.env` file if one exists in the project root. If `.env` is absent, it falls back to the existing shell environment and the built-in defaults above.
+The service must use the same PostgreSQL database as `../langgo_strapi4` (`DATABASE_NAME`, host, user, and password). It stores service-owned achievement tables in `ACHIEVEMENT_DB_SCHEMA` instead of Strapi's default schema. `EVENT_BUS_POSTGRES_URL` is optional; when omitted, the service derives it from `DATABASE_*` so event-bus tables use the same Strapi database. If an explicit event-bus URL points at a different database, startup fails.
+
+The server auto-loads a local `.env` file if one exists in the project root. If `.env` is absent, it falls back to the existing shell environment and the built-in defaults above.
 
 ## Local Run
 
@@ -152,7 +153,8 @@ Export the current schema and data back into the committed backup file:
 
 `backupdb.sh`:
 
-- loads `.env`
+- loads `DATABASE_*` defaults from `../langgo_strapi4/.env`, then allows this repo's `.env` to override them
+- blocks `DATABASE_NAME=postgres` unless `ALLOW_POSTGRES_DATABASE=true` is set intentionally
 - exports only `ACHIEVEMENT_DB_SCHEMA`
 - writes plain SQL to `backup/achievement-system-backup.sql`
 - includes schema objects, indexes, constraints, defaults, sequences, and data
@@ -160,7 +162,8 @@ Export the current schema and data back into the committed backup file:
 
 `setupdb.sh`:
 
-- loads `.env`
+- loads `DATABASE_*` defaults from `../langgo_strapi4/.env`, then allows this repo's `.env` to override them
+- blocks `DATABASE_NAME=postgres` unless `ALLOW_POSTGRES_DATABASE=true` is set intentionally
 - validates `ACHIEVEMENT_DB_SCHEMA`
 - creates the schema if missing
 - does nothing if required tables already exist
@@ -202,6 +205,9 @@ Use the provided deploy script:
 
 `deploy.sh` does the following:
 
+- loads `DATABASE_*` defaults from `../langgo_strapi4/.env` when present
+- blocks accidental deployment to `DATABASE_NAME=postgres`
+- derives `EVENT_BUS_POSTGRES_URL` from `DATABASE_*` when no explicit URL is provided
 - builds and pushes the Docker image
 - deploys the Cloud Run service
 

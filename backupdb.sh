@@ -3,7 +3,9 @@
 set -euo pipefail
 
 load_dotenv_defaults() {
-  if [ ! -f .env ]; then
+  local env_file="$1"
+  local key_regex="${2:-}"
+  if [ ! -f "${env_file}" ]; then
     return
   fi
 
@@ -14,13 +16,17 @@ load_dotenv_defaults() {
     key="${key#"${key%%[![:space:]]*}"}"
     key="${key%"${key##*[![:space:]]}"}"
     [[ -z "${key}" || ! "${key}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] && continue
+    if [ -n "${key_regex}" ] && [[ ! "${key}" =~ ${key_regex} ]]; then
+      continue
+    fi
     if [ -z "${!key+x}" ]; then
       export "${key}=${value}"
     fi
-  done < .env
+  done < "${env_file}"
 }
 
-load_dotenv_defaults
+load_dotenv_defaults "../langgo_strapi4/.env" "^DATABASE_"
+load_dotenv_defaults ".env"
 
 require_env() {
   local name="$1"
@@ -63,6 +69,11 @@ require_env DATABASE_PORT
 require_env DATABASE_NAME
 require_env DATABASE_USERNAME
 require_env DATABASE_PASSWORD
+
+if [ "${DATABASE_NAME}" = "postgres" ] && [ "${ALLOW_POSTGRES_DATABASE:-false}" != "true" ]; then
+  echo "Error: DATABASE_NAME=postgres is blocked. Use the same Strapi database as ../langgo_strapi4, or set ALLOW_POSTGRES_DATABASE=true intentionally."
+  exit 1
+fi
 
 ACHIEVEMENT_DB_SCHEMA="${ACHIEVEMENT_DB_SCHEMA:-achievement_system}"
 validate_schema "${ACHIEVEMENT_DB_SCHEMA}"
