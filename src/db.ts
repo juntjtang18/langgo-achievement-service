@@ -66,6 +66,8 @@ export class Database {
       }
     }
 
+    await this.applyMigrationFiles();
+
     const valid = await this.hasRequiredTables();
     if (!valid) {
       throw new Error(`Database initialization failed for schema "${this.schema}".`);
@@ -158,6 +160,23 @@ export class Database {
     const raw = await fs.readFile(filePath, 'utf8');
     const sql = replaceSchema(raw, this.schema);
     await this.query(sql);
+  }
+
+  private async applyMigrationFiles(): Promise<void> {
+    const migrationsDir = path.resolve(process.cwd(), 'sql/migrations');
+    let files: string[];
+
+    try {
+      files = (await fs.readdir(migrationsDir))
+        .filter((file) => file.endsWith('.sql'))
+        .sort();
+    } catch {
+      return;
+    }
+
+    for (const file of files) {
+      await this.applySqlFile(path.join(migrationsDir, file));
+    }
   }
 }
 

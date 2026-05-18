@@ -47,7 +47,12 @@ CREATE TABLE IF NOT EXISTS {{SCHEMA}}.as_event_logs (
   userid VARCHAR(255),
   username VARCHAR(255),
   payload_json JSONB NOT NULL,
-  received_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  status TEXT NOT NULL DEFAULT 'handled',
+  handle_result JSONB,
+  handled_at TIMESTAMPTZ,
+  CONSTRAINT as_event_logs_status_check
+    CHECK (status IN ('processing', 'handled', 'failed', 'ignored'))
 );
 
 CREATE TABLE IF NOT EXISTS {{SCHEMA}}.as_achievement_change_logs (

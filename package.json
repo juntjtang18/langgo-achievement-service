@@ -17,6 +17,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@langgo/event-bus-client": "file:../event-bus-client",
     "dotenv": "^16.6.1",
     "event-bus-client": "github:juntjtang18/event-bus-client#main",
     "express": "^4.21.2",
