@@ -90,10 +90,34 @@ psql_exec_file() {
     --file="${file}"
 }
 
+render_sql_template() {
+  local source_file="$1"
+  local target_file="$2"
+  perl -pe 's/\{\{SCHEMA\}\}/'"${ACHIEVEMENT_DB_SCHEMA}"'/g' "${source_file}" > "${target_file}"
+}
+
 render_backup_sql() {
   local source_file="$1"
   local target_file="$2"
   perl -pe 's/\{\{SCHEMA\}\}/'"${ACHIEVEMENT_DB_SCHEMA}"'/g; s/^\s*CREATE SCHEMA\b.*$//g;' "${source_file}" > "${target_file}"
+}
+
+apply_migrations() {
+  local migrations_dir="${PROJECT_ROOT}/sql/migrations"
+  if [ ! -d "${migrations_dir}" ]; then
+    return
+  fi
+
+  local migration_file
+  while IFS= read -r migration_file; do
+    [ -z "${migration_file}" ] && continue
+    local rendered_file
+    rendered_file="$(mktemp "${TMPDIR:-/tmp}/achievement-migration.XXXXXX.sql")"
+    render_sql_template "${migration_file}" "${rendered_file}"
+    echo "Applying migration $(basename "${migration_file}")"
+    psql_exec_file "${rendered_file}"
+    rm -f "${rendered_file}"
+  done < <(find "${migrations_dir}" -maxdepth 1 -type f -name '*.sql' | sort)
 }
 
 PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -164,6 +188,7 @@ if [ "${FRESH_MODE}" = "true" ]; then
   psql_query "CREATE SCHEMA \"${ACHIEVEMENT_DB_SCHEMA}\";" >/dev/null
   echo "Applying committed backup SQL"
   psql_exec_file "${RESTORE_FILE}"
+  apply_migrations
   echo "Fresh restore complete."
   exit 0
 fi
@@ -183,7 +208,9 @@ for table_name in "${REQUIRED_TABLES[@]}"; do
 done
 
 if [ "${#missing_tables[@]}" -eq 0 ]; then
-  echo "Required tables already exist in schema ${ACHIEVEMENT_DB_SCHEMA}. No changes made."
+  echo "Required tables already exist in schema ${ACHIEVEMENT_DB_SCHEMA}. Applying migrations."
+  apply_migrations
+  echo "Setup complete."
   exit 0
 fi
 
@@ -191,11 +218,12 @@ echo "Missing required tables: ${missing_tables[*]}"
 if [ "${existing_required_count}" -gt 0 ]; then
   echo "Schema already contains achievement tables. Applying sql/init.sql to create only missing tables."
   INIT_FILE="$(mktemp "${TMPDIR:-/tmp}/achievement-init.XXXXXX.sql")"
-  perl -pe 's/\{\{SCHEMA\}\}/'"${ACHIEVEMENT_DB_SCHEMA}"'/g' "${PROJECT_ROOT}/sql/init.sql" > "${INIT_FILE}"
+  render_sql_template "${PROJECT_ROOT}/sql/init.sql" "${INIT_FILE}"
   psql_exec_file "${INIT_FILE}"
   rm -f "${INIT_FILE}"
 else
   echo "Applying committed backup SQL without dropping existing schema."
   psql_exec_file "${RESTORE_FILE}"
 fi
+apply_migrations
 echo "Setup complete."
