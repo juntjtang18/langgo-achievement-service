@@ -7,6 +7,7 @@ const envSchema = z.object({
   PORT: z.string().optional(),
   LOG_LEVEL: z.string().default('info'),
   ACHIEVEMENT_INTERNAL_KEY: z.string().min(1),
+  ACHIEVEMENT_WORKER_CONCURRENCY: z.string().default('3'),
   STRAPI_ADMIN_URL: z.string().default('https://langgo-en-strapi.geniusparentingai.ca/admin/auth/login'),
   ACHIEVEMENT_DB_SCHEMA: z.string().min(1).default('achievement_system'),
   DATABASE_CLIENT: z.string().default('postgres'),
@@ -59,6 +60,7 @@ export interface AppConfig {
   internalKey: string;
   strapiAdminUrl: string;
   schema: string;
+  workerConcurrency: number;
   database: {
     host: string;
     port: number;
@@ -87,6 +89,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   }
 
   const eventBusPostgresUrl = buildPostgresUrl(parsed);
+  const workerConcurrency = Number(parsed.ACHIEVEMENT_WORKER_CONCURRENCY);
+  if (!Number.isInteger(workerConcurrency) || workerConcurrency < 1) {
+    throw new Error('ACHIEVEMENT_WORKER_CONCURRENCY must be a positive integer.');
+  }
 
   return {
     port: Number(parsed.PORT ?? '8080'),
@@ -94,6 +100,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     internalKey: parsed.ACHIEVEMENT_INTERNAL_KEY,
     strapiAdminUrl: parsed.STRAPI_ADMIN_URL,
     schema: parsed.ACHIEVEMENT_DB_SCHEMA,
+    workerConcurrency,
     database: {
       host: parsed.DATABASE_HOST,
       port: Number(parsed.DATABASE_PORT),

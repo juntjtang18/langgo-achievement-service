@@ -14,15 +14,9 @@ export class ProgressService {
     const userid = event.userid == null ? null : String(event.userid);
     const username = event.username || null;
     const eventName = event.event_name;
+    const eventLogId = event.eventLogId;
 
     return this.db.withTransaction(async (client) => {
-      const eventLogId = await this.repository.insertEventLog({
-        event_name: eventName,
-        userid,
-        username,
-        payload_json: event.payload ?? {},
-      }, client);
-
       if (!userid || !eventName) {
         return { updated: 0 };
       }

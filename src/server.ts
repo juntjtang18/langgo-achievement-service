@@ -9,6 +9,7 @@ import { AchievementService } from './services/achievementService';
 import { AdminAuthService } from './services/adminAuthService';
 import { ProgressService } from './services/progressService';
 import { EventHandlerService } from './services/eventHandler';
+import { AchievementEventQueue } from './services/achievementEventQueue';
 import { EventSubscriberService } from './services/eventSubscriberService';
 import { createEventBus } from 'event-bus-client';
 
@@ -25,7 +26,8 @@ async function main() {
   const adminAuthService = new AdminAuthService(config.strapiAdminUrl);
   const achievementService = new AchievementService(repository);
   const progressService = new ProgressService(db, repository, logger);
-  const eventHandler = new EventHandlerService(progressService);
+  const eventHandler = new EventHandlerService(progressService, repository);
+  const eventQueue = new AchievementEventQueue(config.workerConcurrency);
   const eventBus = createEventBus({
     driver: config.eventBus.driver,
     config: {
@@ -34,12 +36,13 @@ async function main() {
     },
     logger: eventBusLogger,
   });
-  const subscriberService = new EventSubscriberService(repository, eventBus, eventHandler, logger);
+  const subscriberService = new EventSubscriberService(repository, eventBus, eventHandler, eventQueue, logger);
 
   logger.info(
     {
       driver: eventBus.driver,
       channelPrefix: config.eventBus.channelPrefix,
+      workerConcurrency: config.workerConcurrency,
     },
     'Event bus enabled'
   );

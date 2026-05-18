@@ -11,6 +11,7 @@ import { createLogger } from '../src/logger';
 import { AchievementRepository } from '../src/repositories/achievementRepository';
 import { AchievementService } from '../src/services/achievementService';
 import { EventHandlerService } from '../src/services/eventHandler';
+import { AchievementEventQueue } from '../src/services/achievementEventQueue';
 import { EventSubscriberService } from '../src/services/eventSubscriberService';
 import { ProgressService } from '../src/services/progressService';
 
@@ -64,7 +65,8 @@ describeIfIntegration('achievement event bus integration', () => {
   const repository = new AchievementRepository(db);
   const achievementService = new AchievementService(repository);
   const progressService = new ProgressService(db, repository, logger);
-  const eventHandler = new EventHandlerService(progressService);
+  const eventHandler = new EventHandlerService(progressService, repository);
+  const eventQueue = new AchievementEventQueue(3);
   const eventBus = createEventBus({
     driver: 'postgres',
     config: {
@@ -73,7 +75,7 @@ describeIfIntegration('achievement event bus integration', () => {
     },
     logger,
   });
-  const subscriberService = new EventSubscriberService(repository, eventBus as any, eventHandler, logger);
+  const subscriberService = new EventSubscriberService(repository, eventBus as any, eventHandler, eventQueue, logger);
   const app = createApp({
     achievementService,
     logger,

@@ -16,6 +16,33 @@ function reportCase(testCase: string, expected: unknown, actual: unknown) {
   console.info(message);
 }
 
+function createAuditRepository() {
+  let nextEventLogId = 1;
+  const eventLogs: Array<{ id: number; event_name: string; userid: string | null; username: string | null; payload_json: unknown }> = [];
+  const handledLogs: Array<{ eventLogId: number; result: unknown }> = [];
+  const failedLogs: Array<{ eventLogId: number; result: unknown }> = [];
+
+  return {
+    eventLogs,
+    handledLogs,
+    failedLogs,
+    repository: {
+      insertEventLog: async (input: { event_name: string; userid: string | null; username: string | null; payload_json: unknown }) => {
+        const id = nextEventLogId;
+        nextEventLogId += 1;
+        eventLogs.push({ id, ...input });
+        return id;
+      },
+      markEventLogHandled: async (eventLogId: number, result: unknown) => {
+        handledLogs.push({ eventLogId, result });
+      },
+      markEventLogFailed: async (eventLogId: number, result: unknown) => {
+        failedLogs.push({ eventLogId, result });
+      },
+    },
+  };
+}
+
 describe('achievement service', () => {
   it('uses canonical Strapi event names for achievement subscriptions and progress lookup', async () => {
     expect(normalizeAchievementEventName('flashcard.created')).toBe('flashcard.created');
@@ -109,12 +136,13 @@ describe('achievement service', () => {
 
   it('extracts unified event fields and delegates to progress service', async () => {
     const calls: any[] = [];
+    const audit = createAuditRepository();
     const eventHandler = new EventHandlerService({
       applyEvent: async (event) => {
         calls.push(event);
         return { updated: 1 };
       },
-    } as ProgressService);
+    } as ProgressService, audit.repository as any);
 
     const result = await eventHandler.handle({
       topic: 'flashcard.reviewed',
@@ -138,8 +166,10 @@ describe('achievement service', () => {
           username: 'vivian',
           eventType: 'flashcard.reviewed',
         },
+        eventLogId: 1,
       },
     ]);
+    expect(audit.handledLogs).toEqual([{ eventLogId: 1, result: { ok: true, updated: 1 } }]);
   });
 
   it('accepts only the unified event schema', async () => {
@@ -174,6 +204,7 @@ describe('achievement service', () => {
     ];
 
     const actualCalls: Array<{ event_name: string; userid: string | null; username: string | null }> = [];
+    const audit = createAuditRepository();
     const eventHandler = new EventHandlerService({
       applyEvent: async (event) => {
         actualCalls.push({
@@ -183,7 +214,7 @@ describe('achievement service', () => {
         });
         return { updated: 1 };
       },
-    } as ProgressService);
+    } as ProgressService, audit.repository as any);
 
     for (const entry of cases) {
       await eventHandler.handle({
@@ -204,12 +235,13 @@ describe('achievement service', () => {
 
   it('accepts canonical userId/username fields while preserving canonical userid/username when both are present', async () => {
     const calls: any[] = [];
+    const audit = createAuditRepository();
     const eventHandler = new EventHandlerService({
       applyEvent: async (event) => {
         calls.push(event);
         return { updated: 1 };
       },
-    } as ProgressService);
+    } as ProgressService, audit.repository as any);
 
     await eventHandler.handle({
       topic: '',
@@ -261,6 +293,47 @@ describe('achievement service', () => {
     expect(actual).toEqual(expected);
   });
 
+  it('marks event logs handled on success and failed when progress transaction rolls back', async () => {
+    const successAudit = createAuditRepository();
+    const successHandler = new EventHandlerService({
+      applyEvent: async (event) => ({ updated: event.eventLogId }),
+    } as ProgressService, successAudit.repository as any);
+
+    await expect(successHandler.handle({
+      topic: 'flashcard.reviewed',
+      payload: { userId: 58, username: 'aug13', eventType: 'flashcard.reviewed' },
+      ack: async () => undefined,
+      nack: async () => undefined,
+    })).resolves.toEqual({ updated: 1 });
+
+    expect(successAudit.eventLogs).toHaveLength(1);
+    expect(successAudit.failedLogs).toEqual([]);
+    expect(successAudit.handledLogs).toEqual([{ eventLogId: 1, result: { ok: true, updated: 1 } }]);
+
+    const failedAudit = createAuditRepository();
+    let rolledBack = false;
+    const failedHandler = new EventHandlerService({
+      applyEvent: async () => {
+        rolledBack = true;
+        throw new Error('forced progress failure');
+      },
+    } as unknown as ProgressService, failedAudit.repository as any);
+
+    await expect(failedHandler.handle({
+      topic: 'flashcard.reviewed',
+      payload: { userId: 58, username: 'aug13', eventType: 'flashcard.reviewed' },
+      ack: async () => undefined,
+      nack: async () => undefined,
+    })).rejects.toThrow('forced progress failure');
+
+    expect(rolledBack).toBe(true);
+    expect(failedAudit.eventLogs).toHaveLength(1);
+    expect(failedAudit.handledLogs).toEqual([]);
+    expect(failedAudit.failedLogs).toEqual([
+      { eventLogId: 1, result: { ok: false, error: 'forced progress failure' } },
+    ]);
+  });
+
   it('applies progress increments for every supported achievement event type', async () => {
     const state = new Map<string, {
       id: number;
@@ -281,9 +354,8 @@ describe('achievement service', () => {
       { achievement_id: 3, event_name: 'flashcard.remembered', points: 3, goal: 3 },
       { achievement_id: 4, event_name: 'article.created', points: 1, goal: 1 },
     ];
-    const eventLogs: Array<{ id: number; event_name: string; userid: string | null; username: string | null; payload_json: unknown }> = [];
+    const audit = createAuditRepository();
     const changeLogs: Array<{ event_log_id: number; achievement_id: number; points_added: number; progress_before: number; progress_after: number }> = [];
-    let nextEventLogId = 1;
 
     const db = {
       withTransaction: async (callback: (client: unknown) => Promise<{ updated: number }>) => callback({}),
@@ -329,11 +401,6 @@ describe('achievement service', () => {
           }
         }
       },
-      insertEventLog: async (input: { event_name: string; userid: string | null; username: string | null; payload_json: unknown }) => {
-        eventLogs.push({ id: nextEventLogId, ...input });
-        nextEventLogId += 1;
-        return nextEventLogId - 1;
-      },
       insertAchievementChangeLog: async (input: {
         event_log_id: number;
         achievement_id: number;
@@ -356,7 +423,7 @@ describe('achievement service', () => {
       level: 'silent',
     } as any);
 
-    const eventHandler = new EventHandlerService(progressService);
+    const eventHandler = new EventHandlerService(progressService, audit.repository as any);
     const cases = [
       {
         testCase: 'flashcard.created increments by 1 and stays unachieved below goal',
@@ -435,7 +502,7 @@ describe('achievement service', () => {
     }
 
     const auditActual = {
-      eventLogs: eventLogs.map((row) => ({ event_name: row.event_name, userid: row.userid })),
+      eventLogs: audit.eventLogs.map((row) => ({ event_name: row.event_name, userid: row.userid })),
       changeLogs: changeLogs.map((row) => ({
         event_log_id: row.event_log_id,
         achievement_id: row.achievement_id,
@@ -471,5 +538,6 @@ describe('achievement service', () => {
       auditActual
     );
     expect(auditActual).toEqual(auditExpected);
+    expect(audit.handledLogs.map((row) => row.eventLogId)).toEqual([1, 2, 3, 4, 5, 6, 7]);
   });
 });

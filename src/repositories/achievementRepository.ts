@@ -154,9 +154,21 @@ export class AchievementRepository {
     );
   }
 
-  async ensureUserAchievements(userid: string, username: string | null, client?: PoolClient): Promise<void> {
-    const executor = client ?? this.db.pool;
-    await executor.query(
+  async ensureUserAchievements(userid: string, username: string | null, client: PoolClient): Promise<void> {
+    await client.query(
+      `INSERT INTO ${this.userAchievementsTable} (userid, username, achievement_id, progress, achieved, achieved_at)
+       SELECT $1, $2, a.id, 0, FALSE, NULL
+       FROM ${this.achievementsTable} a
+       LEFT JOIN ${this.userAchievementsTable} ua
+         ON ua.userid = $1
+        AND ua.achievement_id = a.id
+       WHERE ua.id IS NULL`,
+      [userid, username]
+    );
+  }
+
+  async ensureUserAchievementsOutsideTransaction(userid: string, username: string | null): Promise<void> {
+    await this.db.query(
       `INSERT INTO ${this.userAchievementsTable} (userid, username, achievement_id, progress, achieved, achieved_at)
        SELECT $1, $2, a.id, 0, FALSE, NULL
        FROM ${this.achievementsTable} a
@@ -211,17 +223,38 @@ export class AchievementRepository {
   }
 
   async insertEventLog(
-    input: Omit<EventLogRow, 'id' | 'received_at'>,
-    client: PoolClient
+    input: Omit<EventLogRow, 'id' | 'received_at' | 'status' | 'handle_result' | 'handled_at'>
   ): Promise<number> {
-    const result = await client.query<{ id: number }>(
-      `INSERT INTO ${this.eventLogsTable} (event_name, userid, username, payload_json)
-       VALUES ($1, $2, $3, $4::jsonb)
+    const result = await this.db.query<{ id: number }>(
+      `INSERT INTO ${this.eventLogsTable} (event_name, userid, username, payload_json, status)
+       VALUES ($1, $2, $3, $4::jsonb, 'processing')
        RETURNING id`,
       [input.event_name, input.userid, input.username, JSON.stringify(input.payload_json ?? {})]
     );
 
     return result.rows[0].id;
+  }
+
+  async markEventLogHandled(eventLogId: number, handleResult: unknown): Promise<void> {
+    await this.db.query(
+      `UPDATE ${this.eventLogsTable}
+       SET status = 'handled',
+           handled_at = NOW(),
+           handle_result = $2::jsonb
+       WHERE id = $1`,
+      [eventLogId, JSON.stringify(handleResult ?? { ok: true })]
+    );
+  }
+
+  async markEventLogFailed(eventLogId: number, handleResult: unknown): Promise<void> {
+    await this.db.query(
+      `UPDATE ${this.eventLogsTable}
+       SET status = 'failed',
+           handled_at = NOW(),
+           handle_result = $2::jsonb
+       WHERE id = $1`,
+      [eventLogId, JSON.stringify(handleResult ?? { ok: false })]
+    );
   }
 
   async insertAchievementChangeLog(

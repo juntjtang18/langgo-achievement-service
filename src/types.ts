@@ -45,6 +45,7 @@ export interface AchievementEvent {
   userid: string | null;
   username: string | null;
   payload: unknown;
+  eventLogId: number;
 }
 
 export interface EventLogRow {
@@ -54,6 +55,9 @@ export interface EventLogRow {
   username: string | null;
   payload_json: unknown;
   received_at: string;
+  status: 'processing' | 'handled' | 'failed' | 'ignored';
+  handle_result: unknown | null;
+  handled_at: string | null;
 }
 
 export interface AchievementChangeLogRow {

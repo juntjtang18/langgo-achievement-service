@@ -1,7 +1,13 @@
 import type { Logger } from 'pino';
 import { AchievementRepository } from '../repositories/achievementRepository';
 import type { EventBus, EventBusSubscriptionHandle } from '../types';
+import { AchievementEventQueue } from './achievementEventQueue';
 import { EventHandlerService } from './eventHandler';
+
+function getQueueKey(payload: Record<string, any> | null | undefined): string {
+  const userId = payload?.data?.userId ?? payload?.userId;
+  return userId == null || userId === '' ? '__unknown__' : String(userId);
+}
 
 export class EventSubscriberService {
   private subscriptions: EventBusSubscriptionHandle[] = [];
@@ -10,6 +16,7 @@ export class EventSubscriberService {
     private readonly repository: AchievementRepository,
     private readonly eventBus: EventBus,
     private readonly eventHandler: EventHandlerService,
+    private readonly eventQueue: AchievementEventQueue,
     private readonly logger: Logger
   ) {}
 
@@ -23,7 +30,7 @@ export class EventSubscriberService {
       const handle = await this.eventBus.subscribe<Record<string, any>>(eventName, async (message) => {
         try {
           this.logger.info({ eventName }, 'handling achievement event');
-          await this.eventHandler.handle(message);
+          await this.eventQueue.enqueue(getQueueKey(message.payload), () => this.eventHandler.handle(message));
           await message.ack();
         } catch (error) {
           this.logger.error({ err: error, eventName }, 'achievement event handler failed');
