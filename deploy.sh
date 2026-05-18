@@ -79,7 +79,7 @@ require_env ACHIEVEMENT_INTERNAL_KEY
 require_env DATABASE_PASSWORD
 
 IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}:${VERSION}"
-REVISION_SUFFIX="v${VERSION//./-}"
+REVISION_SUFFIX="v${VERSION//./-}-$(date -u +%Y%m%d%H%M%S)"
 
 echo "--- Deploying ${SERVICE_NAME} version ${VERSION} ---"
 echo "Project: ${PROJECT_ID}"
