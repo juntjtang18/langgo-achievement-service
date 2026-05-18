@@ -1,17 +1,14 @@
+# syntax=docker/dockerfile:1.7
+
 FROM node:20-bookworm-slim AS build
 WORKDIR /app
 
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends git \
-  && rm -rf /var/lib/apt/lists/*
-
 COPY package.json package-lock.json* tsconfig.json ./
-RUN npm install
+COPY vendor ./vendor
+RUN --mount=type=cache,target=/root/.npm npm ci
 
 COPY src ./src
-COPY test ./test
 COPY sql ./sql
-COPY backup ./backup
 COPY README.md ./
 COPY .env.example ./
 
@@ -25,7 +22,6 @@ COPY --from=build /app/package.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/sql ./sql
-COPY --from=build /app/backup ./backup
 COPY --from=build /app/README.md ./
 COPY --from=build /app/.env.example ./
 

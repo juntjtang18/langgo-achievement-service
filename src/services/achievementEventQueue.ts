@@ -10,14 +10,25 @@ export class AchievementEventQueue {
   private readonly runningKeys = new Set<string>();
   private activeCount = 0;
 
-  constructor(private readonly maxConcurrency = 3) {
+  constructor(
+    private readonly maxConcurrency = 3,
+    private readonly maxPending = 1000
+  ) {
     if (!Number.isInteger(maxConcurrency) || maxConcurrency < 1) {
       throw new Error('AchievementEventQueue maxConcurrency must be a positive integer.');
+    }
+    if (!Number.isInteger(maxPending) || maxPending < 1) {
+      throw new Error('AchievementEventQueue maxPending must be a positive integer.');
     }
   }
 
   enqueue<T>(key: string | null | undefined, run: () => Promise<T>): Promise<T> {
     return new Promise<T>((resolve, reject) => {
+      if (this.pending.length >= this.maxPending) {
+        reject(new Error(`AchievementEventQueue full: pending=${this.pending.length}, limit=${this.maxPending}`));
+        return;
+      }
+
       this.pending.push({
         key: key || '__unknown__',
         run,

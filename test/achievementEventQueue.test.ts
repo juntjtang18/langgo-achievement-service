@@ -97,6 +97,26 @@ describe('AchievementEventQueue', () => {
 
     expect(maxActive).toBe(1);
   });
+
+  it('rejects new tasks when the pending queue reaches the configured limit', async () => {
+    const queue = new AchievementEventQueue(1, 2);
+    const blocker = deferred();
+
+    const first = queue.enqueue('active', async () => {
+      await blocker.promise;
+    });
+    const second = queue.enqueue('pending-1', async () => undefined);
+    const third = queue.enqueue('pending-2', async () => undefined);
+
+    await tick();
+    expect(queue.active).toBe(1);
+    expect(queue.size).toBe(2);
+
+    await expect(queue.enqueue('overflow', async () => undefined)).rejects.toThrow('AchievementEventQueue full');
+
+    blocker.resolve();
+    await Promise.all([first, second, third]);
+  });
 });
 
 describe('EventSubscriberService queue integration', () => {

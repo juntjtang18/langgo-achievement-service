@@ -13,13 +13,12 @@
     "dev:watch": "tsx watch src/server.ts",
     "generate:restore-sql": "node scripts/generate-restore-sql.mjs",
     "start": "node dist/src/server.js",
-    "test": "vitest run",
+    "test": "vitest run --dir test",
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@langgo/event-bus-client": "file:../event-bus-client",
     "dotenv": "^16.6.1",
-    "event-bus-client": "github:juntjtang18/event-bus-client#main",
+    "event-bus-client": "file:vendor/langgo-event-bus-client-0.1.0.tgz",
     "express": "^4.21.2",
     "pg": "^8.16.0",
     "pino": "^9.7.0",

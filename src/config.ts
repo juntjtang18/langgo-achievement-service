@@ -8,6 +8,7 @@ const envSchema = z.object({
   LOG_LEVEL: z.string().default('info'),
   ACHIEVEMENT_INTERNAL_KEY: z.string().min(1),
   ACHIEVEMENT_WORKER_CONCURRENCY: z.string().default('3'),
+  ACHIEVEMENT_WORKER_QUEUE_LIMIT: z.string().default('1000'),
   STRAPI_ADMIN_URL: z.string().default('https://langgo-en-strapi.geniusparentingai.ca/admin/auth/login'),
   ACHIEVEMENT_DB_SCHEMA: z.string().min(1).default('achievement_system'),
   DATABASE_CLIENT: z.string().default('postgres'),
@@ -61,6 +62,7 @@ export interface AppConfig {
   strapiAdminUrl: string;
   schema: string;
   workerConcurrency: number;
+  workerQueueLimit: number;
   database: {
     host: string;
     port: number;
@@ -93,6 +95,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   if (!Number.isInteger(workerConcurrency) || workerConcurrency < 1) {
     throw new Error('ACHIEVEMENT_WORKER_CONCURRENCY must be a positive integer.');
   }
+  const workerQueueLimit = Number(parsed.ACHIEVEMENT_WORKER_QUEUE_LIMIT);
+  if (!Number.isInteger(workerQueueLimit) || workerQueueLimit < 1) {
+    throw new Error('ACHIEVEMENT_WORKER_QUEUE_LIMIT must be a positive integer.');
+  }
 
   return {
     port: Number(parsed.PORT ?? '8080'),
@@ -101,6 +107,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     strapiAdminUrl: parsed.STRAPI_ADMIN_URL,
     schema: parsed.ACHIEVEMENT_DB_SCHEMA,
     workerConcurrency,
+    workerQueueLimit,
     database: {
       host: parsed.DATABASE_HOST,
       port: Number(parsed.DATABASE_PORT),

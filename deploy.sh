@@ -28,6 +28,56 @@ load_dotenv_defaults() {
 load_dotenv_defaults "../langgo_strapi4/.env" "^DATABASE_"
 load_dotenv_defaults ".env"
 
+sync_event_bus_client_dependency() {
+  local repo_url="${EVENT_BUS_CLIENT_REPO_URL:-https://github.com/juntjtang18/event-bus-client.git}"
+  local ref="${EVENT_BUS_CLIENT_REF:-main}"
+  local cache_dir=".deploy-cache/event-bus-client"
+  local commit_file=".deploy-cache/event-bus-client.commit"
+  local vendor_dir="vendor"
+  local tarball="${vendor_dir}/langgo-event-bus-client-0.1.0.tgz"
+  local lock_needs_update="false"
+
+  echo "Syncing event-bus-client dependency from ${repo_url} (${ref})..."
+
+  mkdir -p ".deploy-cache" "${vendor_dir}"
+
+  if [ ! -d "${cache_dir}/.git" ]; then
+    rm -rf "${cache_dir}"
+    git clone --depth 1 --branch "${ref}" "${repo_url}" "${cache_dir}"
+  else
+    git -C "${cache_dir}" fetch --depth 1 origin "${ref}"
+    git -C "${cache_dir}" checkout --quiet FETCH_HEAD
+  fi
+
+  local commit
+  commit="$(git -C "${cache_dir}" rev-parse HEAD)"
+
+  if [ -f "${tarball}" ] && [ -f "${commit_file}" ] && [ "$(cat "${commit_file}")" = "${commit}" ]; then
+    echo "event-bus-client already packed at ${commit}"
+  else
+    echo "Packing event-bus-client at ${commit}"
+    npm --prefix "${cache_dir}" ci
+    npm --prefix "${cache_dir}" run build
+    rm -f "${vendor_dir}"/langgo-event-bus-client-*.tgz
+    (cd "${cache_dir}" && npm pack --pack-destination "$(pwd)/../../${vendor_dir}" >/dev/null)
+    echo "${commit}" > "${commit_file}"
+    lock_needs_update="true"
+  fi
+
+  if [ ! -f "${tarball}" ]; then
+    echo "Error: expected ${tarball} was not created."
+    exit 1
+  fi
+
+  if ! grep -q '"event-bus-client": "file:vendor/langgo-event-bus-client-0.1.0.tgz"' package-lock.json 2>/dev/null; then
+    lock_needs_update="true"
+  fi
+
+  if [ "${lock_needs_update}" = "true" ]; then
+    npm install --package-lock-only --ignore-scripts
+  fi
+}
+
 require_env() {
   local name="$1"
   if [ -z "${!name:-}" ]; then
@@ -77,6 +127,8 @@ require_command docker
 require_command gcloud
 require_env ACHIEVEMENT_INTERNAL_KEY
 require_env DATABASE_PASSWORD
+
+sync_event_bus_client_dependency
 
 IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}:${VERSION}"
 REVISION_SUFFIX="v${VERSION//./-}-$(date -u +%Y%m%d%H%M%S)"

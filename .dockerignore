@@ -1,9 +1,11 @@
-dist
 node_modules
+dist
 .deploy-cache
+.git
 .env
 .env.local
+test
+backup
 coverage
-.DS_Store
 npm-debug.log*
-*.zip
+.DS_Store

@@ -27,7 +27,7 @@ async function main() {
   const achievementService = new AchievementService(repository);
   const progressService = new ProgressService(db, repository, logger);
   const eventHandler = new EventHandlerService(progressService, repository);
-  const eventQueue = new AchievementEventQueue(config.workerConcurrency);
+  const eventQueue = new AchievementEventQueue(config.workerConcurrency, config.workerQueueLimit);
   const eventBus = createEventBus({
     driver: config.eventBus.driver,
     config: {
@@ -43,6 +43,7 @@ async function main() {
       driver: eventBus.driver,
       channelPrefix: config.eventBus.channelPrefix,
       workerConcurrency: config.workerConcurrency,
+      workerQueueLimit: config.workerQueueLimit,
     },
     'Event bus enabled'
   );
