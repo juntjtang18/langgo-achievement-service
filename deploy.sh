@@ -25,35 +25,6 @@ load_dotenv_defaults() {
   done < "${env_file}"
 }
 
-build_database_postgres_url() {
-  node <<'NODE'
-const encode = encodeURIComponent;
-const user = encode(process.env.DATABASE_USERNAME || '');
-const password = encode(process.env.DATABASE_PASSWORD || '');
-const database = encode(process.env.DATABASE_NAME || '');
-const port = encode(process.env.DATABASE_PORT || '5432');
-const hostValue = process.env.DATABASE_HOST || '';
-if (hostValue.startsWith('/')) {
-  process.stdout.write(`postgresql://${user}:${password}@/${database}?host=${encode(hostValue)}&port=${port}`);
-} else {
-  process.stdout.write(`postgresql://${user}:${password}@${encode(hostValue)}:${port}/${database}`);
-}
-NODE
-}
-
-get_postgres_url_database_name() {
-  node <<'NODE'
-const connectionString = process.env.EVENT_BUS_POSTGRES_URL || '';
-try {
-  const url = new URL(connectionString);
-  process.stdout.write(decodeURIComponent(url.pathname.replace(/^\/+/, '')));
-} catch {
-  const match = connectionString.match(/^postgres(?:ql)?:\/\/(?:[^/@]+@)?\/([^?]+)/);
-  process.stdout.write(match && match[1] ? decodeURIComponent(match[1]) : '');
-}
-NODE
-}
-
 load_dotenv_defaults "../langgo_strapi4/.env" "^DATABASE_"
 load_dotenv_defaults ".env"
 
@@ -107,16 +78,6 @@ require_command gcloud
 require_env ACHIEVEMENT_INTERNAL_KEY
 require_env DATABASE_PASSWORD
 
-if [ -z "${EVENT_BUS_POSTGRES_URL:-}" ]; then
-  EVENT_BUS_POSTGRES_URL="$(build_database_postgres_url)"
-fi
-
-EVENT_BUS_DATABASE_NAME="$(get_postgres_url_database_name)"
-if [ "${EVENT_BUS_DATABASE_NAME}" != "${DATABASE_NAME}" ]; then
-  echo "Error: EVENT_BUS_POSTGRES_URL database '${EVENT_BUS_DATABASE_NAME}' must match DATABASE_NAME '${DATABASE_NAME}'."
-  exit 1
-fi
-
 IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}:${VERSION}"
 REVISION_SUFFIX="v${VERSION//./-}"
 
@@ -124,7 +85,7 @@ echo "--- Deploying ${SERVICE_NAME} version ${VERSION} ---"
 echo "Project: ${PROJECT_ID}"
 echo "Region: ${REGION}"
 echo "Image: ${IMAGE_NAME}"
-echo "Event bus: driver=${EVENT_BUS_DRIVER}, channelPrefix=${EVENT_BUS_CHANNEL_PREFIX}, postgresUrlConfigured=yes"
+echo "Event bus: driver=${EVENT_BUS_DRIVER}, channelPrefix=${EVENT_BUS_CHANNEL_PREFIX}, postgresUrlSource=database-config"
 echo "Database: host=${DATABASE_HOST}, database=${DATABASE_NAME}, schema=${ACHIEVEMENT_DB_SCHEMA}"
 
 echo "Building Docker image"
@@ -156,7 +117,6 @@ gcloud run deploy "${SERVICE_NAME}" \
   --set-env-vars "DATABASE_PASSWORD=${DATABASE_PASSWORD}" \
   --set-env-vars "DATABASE_SSL=${DATABASE_SSL}" \
   --set-env-vars "EVENT_BUS_DRIVER=${EVENT_BUS_DRIVER}" \
-  --set-env-vars "EVENT_BUS_POSTGRES_URL=${EVENT_BUS_POSTGRES_URL}" \
   --set-env-vars "EVENT_BUS_CHANNEL_PREFIX=${EVENT_BUS_CHANNEL_PREFIX}" \
   --revision-suffix "${REVISION_SUFFIX}"
 
